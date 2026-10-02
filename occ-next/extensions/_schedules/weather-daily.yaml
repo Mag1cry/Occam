@@ -1,0 +1,13 @@
+# 一条日程。**一条一个文件**：嵌在包里的话，一个缩进写错就毁掉整个包；
+# 独立之后"加一条日程"就是加一个文件，不碰任何包。
+#
+# 文件名叫什么不重要——**它的名字是 `name` 这一栏**（用户嘴里的"那条日程"）。
+name: weather.daily
+cron: "0 8 * * *"
+timezone: Asia/Shanghai
+# `task_ref` 是**工作区里**那份正文的引用（默认根下就是 `workspace/`）：
+# Task 只存引用，派发时必须读得到，否则停在「任务输入不存在」。
+task_ref: ''
+# 跑哪条执行者。名字写全名，和包清单里那条对得上。
+executor_ref: weather.collect
+enabled: true

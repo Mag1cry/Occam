@@ -1,0 +1,19 @@
+# 飞书通道：宿主往外送东西的那只手。
+#
+# **它不是工具**：工具是被审批的动作（走 `function/` 那条管线），通道是宿主自己的手
+# ——把一份已经决定要送出去的描述变成外面看得见的东西。所以它不写 `approval_required`，
+# 也不进那本能力目录。
+#
+# 凭据走环境变量（`OCC_NEXT_FEISHU_APP_ID` / `_APP_SECRET` / `_OPEN_ID`），
+# **不进声明、不进事件、不进界面**——和 `api_key_env` 同一条线。
+#
+# 没配凭据时 `enabled()` 答 false，宿主就不送它——**不算失败**（一条没配好的通道
+# 每次都说"我送不出去"，只会把真正要看的错误淹掉）。
+id: feishu
+name: 飞书通道
+description: 审批到了发一张卡片；点了按钮**在原地变成已批准/已拒绝**（飞书服务器够不到这台机器，靠我们连出去的长连接）
+version: "1.0"
+channels:
+  - name: feishu
+    entrypoint: "channel.py:Feishu"
+enabled: false

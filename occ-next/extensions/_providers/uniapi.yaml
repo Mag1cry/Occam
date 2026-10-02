@@ -1,0 +1,466 @@
+# 这家供应商的模型目录。**它由 `scripts/update_uniapi_models.py` 从上游拉下来**——
+# 手改会在下一次同步时消失。
+#
+# `models` 只是**事实**（这家有哪些模型）；「用哪个」是执行者的事。
+name: uniapi
+base_url: https://api.uniapi.top/v1
+api_key_env: UNIAPI_API_KEY
+models:
+- name: I2V-01-live
+  owned_by: MiniMax
+- name: MiniMax-Hailuo-02
+  owned_by: MiniMax
+- name: MiniMax-Hailuo-2.3
+  owned_by: MiniMax
+- name: MiniMax-Hailuo-2.3-Fast
+  owned_by: MiniMax
+- name: MiniMax-M1
+  owned_by: MiniMax
+- name: MiniMax-M2
+  owned_by: MiniMax
+- name: MiniMax-M2-Stable
+  owned_by: MiniMax
+- name: MiniMax-M2.1
+  owned_by: MiniMax
+- name: MiniMax-M2.5
+  owned_by: MiniMax
+- name: MiniMax-M2.5-highspeed
+  owned_by: MiniMax
+- name: MiniMax-M2.7
+  owned_by: MiniMax
+- name: MiniMax-Text-01
+  owned_by: MiniMax
+- name: T2V-01-Director
+  owned_by: MiniMax
+- name: chatgpt-image-latest
+  owned_by: OpenAI
+- name: claude-fable-5
+  owned_by: Anthropic
+- name: claude-fable-5-1
+  owned_by: Anthropic
+- name: claude-haiku-4-5-20251001
+  owned_by: Anthropic
+- name: claude-opus-4-1-20250805
+  owned_by: Anthropic
+- name: claude-opus-4-20250514
+  owned_by: Anthropic
+- name: claude-opus-4-5-20251101
+  owned_by: Anthropic
+- name: claude-opus-4-6
+  owned_by: Anthropic
+- name: claude-opus-4-7
+  owned_by: Anthropic
+- name: claude-opus-4-8
+  owned_by: Anthropic
+- name: claude-opus-5
+  owned_by: Anthropic
+- name: claude-sonnet-4-5-20250929
+  owned_by: Anthropic
+- name: claude-sonnet-4-6
+  owned_by: Anthropic
+- name: claude-sonnet-5
+  owned_by: Anthropic
+- name: cursor-opus-4-1-20250805
+  owned_by: Anthropic
+- name: cursor-opus-4-20250514
+  owned_by: Anthropic
+- name: deepseek-v3.2
+  owned_by: Deepseek
+- name: deepseek-v3.2-azure
+  owned_by: Deepseek
+- name: deepseek-v4-flash
+  owned_by: Deepseek
+- name: deepseek-v4-flash-0731
+  owned_by: Deepseek
+- name: deepseek-v4-flash-0731-azure
+  owned_by: Deepseek
+- name: deepseek-v4-pro
+  owned_by: Deepseek
+- name: deepseek-v4-pro-0813
+  owned_by: Deepseek
+- name: doubao-seed-1-6-251015
+  owned_by: 豆包
+- name: doubao-seed-1-6-vision-250815
+  owned_by: 豆包
+- name: doubao-seed-1-8-251228
+  owned_by: 豆包
+- name: doubao-seed-2-0-code-preview-260215
+  owned_by: 豆包
+- name: doubao-seed-2-0-lite-260215
+  owned_by: 豆包
+- name: doubao-seed-2-0-mini-260215
+  owned_by: 豆包
+- name: doubao-seed-2-0-pro-260215
+  owned_by: 豆包
+- name: doubao-seed-2-1-pro-260628
+  owned_by: 豆包
+- name: doubao-seed-2-1-turbo-260628
+  owned_by: 豆包
+- name: doubao-seedance-1-0-pro-250528
+  owned_by: 豆包
+- name: doubao-seedance-1-0-pro-fast-251015
+  owned_by: 豆包
+- name: doubao-seedream-4-5-251128
+  owned_by: 豆包
+- name: doubao-seedream-5-0-260128
+  owned_by: 豆包
+- name: gemini-2.5-computer-use-preview-10-2025
+  owned_by: Google Gemini
+- name: gemini-2.5-flash
+  owned_by: Google Gemini
+- name: gemini-2.5-flash-image
+  owned_by: Google Gemini
+- name: gemini-2.5-flash-lite
+  owned_by: Google Gemini
+- name: gemini-2.5-flash-lite-preview-09-2025
+  owned_by: Google Gemini
+- name: gemini-2.5-flash-preview-tts
+  owned_by: Google Gemini
+- name: gemini-2.5-pro
+  owned_by: Google Gemini
+- name: gemini-2.5-pro-preview-tts
+  owned_by: Google Gemini
+- name: gemini-3-flash-preview
+  owned_by: Google Gemini
+- name: gemini-3-pro-image
+  owned_by: Google Gemini
+- name: gemini-3-pro-image-preview
+  owned_by: Google Gemini
+- name: gemini-3-pro-preview
+  owned_by: Google Gemini
+- name: gemini-3.1-flash-image
+  owned_by: Google Gemini
+- name: gemini-3.1-flash-image-preview
+  owned_by: Google Gemini
+- name: gemini-3.1-flash-lite
+  owned_by: Google Gemini
+- name: gemini-3.1-flash-lite-image
+  owned_by: Google Gemini
+- name: gemini-3.1-flash-lite-preview
+  owned_by: Google Gemini
+- name: gemini-3.1-flash-tts-preview
+  owned_by: Google Gemini
+- name: gemini-3.1-pro-preview
+  owned_by: Google Gemini
+- name: gemini-3.1-pro-preview-customtools
+  owned_by: Google Gemini
+- name: gemini-3.5-flash
+  owned_by: Google Gemini
+- name: gemini-3.5-flash-lite
+  owned_by: Google Gemini
+- name: gemini-3.6-flash
+  owned_by: Google Gemini
+- name: gemini-3.7-flash
+  owned_by: Google Gemini
+- name: gemini-3.8-flash
+  owned_by: Google Gemini
+- name: gemini-flash-latest
+  owned_by: Google Gemini
+- name: gemini-flash-lite-latest
+  owned_by: Google Gemini
+- name: gemini-nano-banana
+  owned_by: Google Gemini
+- name: gemini-nano-banana-2
+  owned_by: Google Gemini
+- name: gemini-nano-banana-pro
+  owned_by: Google Gemini
+- name: gemini-omni-1.1-flash
+  owned_by: Google Gemini
+- name: gemini-omni-flash-preview
+  owned_by: Google Gemini
+- name: gemini-pro-latest
+  owned_by: Google Gemini
+- name: glm-4.7
+  owned_by: Zhipu
+- name: glm-5
+  owned_by: Zhipu
+- name: glm-5.1
+  owned_by: Zhipu
+- name: glm-5.2
+  owned_by: Zhipu
+- name: gpt-3.5-turbo
+  owned_by: OpenAI
+- name: gpt-3.5-turbo-0125
+  owned_by: OpenAI
+- name: gpt-3.5-turbo-1106
+  owned_by: OpenAI
+- name: gpt-3.5-turbo-16k
+  owned_by: OpenAI
+- name: gpt-3.5-turbo-instruct
+  owned_by: OpenAI
+- name: gpt-3.5-turbo-instruct-0914
+  owned_by: OpenAI
+- name: gpt-4.1
+  owned_by: OpenAI
+- name: gpt-4.1-2025-04-14
+  owned_by: OpenAI
+- name: gpt-4.1-mini
+  owned_by: OpenAI
+- name: gpt-4.1-mini-2025-04-14
+  owned_by: OpenAI
+- name: gpt-4.1-nano
+  owned_by: OpenAI
+- name: gpt-4.1-nano-2025-04-14
+  owned_by: OpenAI
+- name: gpt-4o
+  owned_by: OpenAI
+- name: gpt-4o-2024-05-13
+  owned_by: OpenAI
+- name: gpt-4o-2024-08-06
+  owned_by: OpenAI
+- name: gpt-4o-2024-11-20
+  owned_by: OpenAI
+- name: gpt-4o-mini
+  owned_by: OpenAI
+- name: gpt-4o-mini-2024-07-18
+  owned_by: OpenAI
+- name: gpt-4o-mini-search-preview
+  owned_by: OpenAI
+- name: gpt-4o-mini-transcribe
+  owned_by: OpenAI
+- name: gpt-4o-mini-tts
+  owned_by: OpenAI
+- name: gpt-4o-search-preview
+  owned_by: OpenAI
+- name: gpt-5
+  owned_by: OpenAI
+- name: gpt-5-2025-08-07
+  owned_by: OpenAI
+- name: gpt-5-codex
+  owned_by: OpenAI
+- name: gpt-5-mini
+  owned_by: OpenAI
+- name: gpt-5-mini-2025-08-07
+  owned_by: OpenAI
+- name: gpt-5-nano
+  owned_by: OpenAI
+- name: gpt-5-nano-2025-08-07
+  owned_by: OpenAI
+- name: gpt-5-pro
+  owned_by: OpenAI
+- name: gpt-5-search-api
+  owned_by: OpenAI
+- name: gpt-5.1
+  owned_by: OpenAI
+- name: gpt-5.1-2025-11-13
+  owned_by: OpenAI
+- name: gpt-5.1-codex
+  owned_by: OpenAI
+- name: gpt-5.1-codex-max
+  owned_by: OpenAI
+- name: gpt-5.1-codex-mini
+  owned_by: OpenAI
+- name: gpt-5.2
+  owned_by: OpenAI
+- name: gpt-5.2-2025-12-11
+  owned_by: OpenAI
+- name: gpt-5.2-chat-latest
+  owned_by: OpenAI
+- name: gpt-5.2-codex
+  owned_by: OpenAI
+- name: gpt-5.2-pro
+  owned_by: OpenAI
+- name: gpt-5.2-pro-2025-12-11
+  owned_by: OpenAI
+- name: gpt-5.3-chat-latest
+  owned_by: OpenAI
+- name: gpt-5.3-codex
+  owned_by: OpenAI
+- name: gpt-5.4
+  owned_by: OpenAI
+- name: gpt-5.4-2026-03-05
+  owned_by: OpenAI
+- name: gpt-5.4-mini
+  owned_by: OpenAI
+- name: gpt-5.4-mini-2026-03-17
+  owned_by: OpenAI
+- name: gpt-5.4-nano
+  owned_by: OpenAI
+- name: gpt-5.4-nano-2026-03-17
+  owned_by: OpenAI
+- name: gpt-5.4-pro
+  owned_by: OpenAI
+- name: gpt-5.4-pro-2026-03-05
+  owned_by: OpenAI
+- name: gpt-5.5
+  owned_by: OpenAI
+- name: gpt-5.5-pro
+  owned_by: OpenAI
+- name: gpt-5.6-luna
+  owned_by: OpenAI
+- name: gpt-5.6-sol
+  owned_by: OpenAI
+- name: gpt-5.6-terra
+  owned_by: OpenAI
+- name: gpt-6-astra
+  owned_by: OpenAI
+- name: gpt-audio
+  owned_by: OpenAI
+- name: gpt-audio-2025-08-28
+  owned_by: OpenAI
+- name: gpt-audio-mini
+  owned_by: OpenAI
+- name: gpt-image-1
+  owned_by: OpenAI
+- name: gpt-image-1-mini
+  owned_by: OpenAI
+- name: gpt-image-1.5
+  owned_by: OpenAI
+- name: gpt-image-2
+  owned_by: OpenAI
+- name: gpt-image-2.5-flare
+  owned_by: OpenAI
+- name: gpt-image-2.5-sunburst
+  owned_by: OpenAI
+- name: gpt-realtime
+  owned_by: OpenAI
+- name: gpt-realtime-2025-08-28
+  owned_by: OpenAI
+- name: gpt-realtime-mini
+  owned_by: OpenAI
+- name: grok-3-all
+  owned_by: xAI
+- name: grok-4.20-0309-non-reasoning
+  owned_by: xAI
+- name: grok-4.20-0309-reasoning
+  owned_by: xAI
+- name: grok-4.20-multi-agent-0309
+  owned_by: xAI
+- name: grok-4.3
+  owned_by: xAI
+- name: grok-4.3-all
+  owned_by: xAI
+- name: grok-4.5
+  owned_by: xAI
+- name: grok-4.6
+  owned_by: xAI
+- name: grok-420-fast-all
+  owned_by: xAI
+- name: grok-build-0.1
+  owned_by: xAI
+- name: grok-imagine-image-2.0
+  owned_by: xAI
+- name: grok-imagine-video
+  owned_by: xAI
+- name: grok-imagine-video-1.5
+  owned_by: xAI
+- name: happyhorse-1.0-i2v
+  owned_by: Happy Horse
+- name: happyhorse-1.0-r2v
+  owned_by: Happy Horse
+- name: happyhorse-1.0-t2v
+  owned_by: Happy Horse
+- name: happyhorse-1.0-video-edit
+  owned_by: Happy Horse
+- name: imagen-4.0-fast-generate-001
+  owned_by: Google Gemini
+- name: imagen-4.0-generate-001
+  owned_by: Google Gemini
+- name: imagen-4.0-ultra-generate-001
+  owned_by: Google Gemini
+- name: kimi-k3
+  owned_by: Moonshot
+- name: kling-advanced-lip-sync_videos
+  owned_by: 可灵AI
+- name: kling-identify-face_videos
+  owned_by: 可灵AI
+- name: kling-motion-control_videos
+  owned_by: 可灵AI
+- name: kling-v1-5_videos
+  owned_by: 可灵AI
+- name: kling-v1-6_videos
+  owned_by: 可灵AI
+- name: kling-v1_videos
+  owned_by: 可灵AI
+- name: kling-v2-1_videos
+  owned_by: 可灵AI
+- name: kling-v2-5-turbo_videos
+  owned_by: 可灵AI
+- name: kling-v2-6_videos
+  owned_by: 可灵AI
+- name: kling-v2-master_videos
+  owned_by: 可灵AI
+- name: kling-v3-omni_videos
+  owned_by: 可灵AI
+- name: kling-v3_videos
+  owned_by: 可灵AI
+- name: kling-video-o1_videos
+  owned_by: 可灵AI
+- name: kling-video_audio
+  owned_by: 可灵AI
+- name: kling_avatar
+  owned_by: 可灵AI
+- name: o1
+  owned_by: OpenAI
+- name: o1-2024-12-17
+  owned_by: OpenAI
+- name: o3
+  owned_by: OpenAI
+- name: o3-2025-04-16
+  owned_by: OpenAI
+- name: o3-mini
+  owned_by: OpenAI
+- name: o3-mini-2025-01-31
+  owned_by: OpenAI
+- name: o3-pro
+  owned_by: OpenAI
+- name: o3-pro-2025-06-10
+  owned_by: OpenAI
+- name: o4-mini
+  owned_by: OpenAI
+- name: o4-mini-2025-04-16
+  owned_by: OpenAI
+- name: omni-moderation-2024-09-26
+  owned_by: OpenAI
+- name: omni-moderation-latest
+  owned_by: OpenAI
+- name: qwen3.7-flash
+  owned_by: Qwen
+- name: qwen3.7-max
+  owned_by: Qwen
+- name: qwen3.7-plus
+  owned_by: Qwen
+- name: qwen3.8-max
+  owned_by: Qwen
+- name: serper_search
+  owned_by: Search
+- name: sora-2
+  owned_by: OpenAI
+- name: sora-2-pro
+  owned_by: OpenAI
+- name: speech-01-hd
+  owned_by: MiniMax
+- name: speech-01-turbo
+  owned_by: MiniMax
+- name: speech-02-hd
+  owned_by: MiniMax
+- name: speech-02-turbo
+  owned_by: MiniMax
+- name: speech-2.5-hd-preview
+  owned_by: MiniMax
+- name: speech-2.5-turbo-preview
+  owned_by: MiniMax
+- name: speech-2.6-hd
+  owned_by: MiniMax
+- name: speech-2.6-turbo
+  owned_by: MiniMax
+- name: suno_lyrics
+  owned_by: Suno
+- name: suno_music
+  owned_by: Suno
+- name: text-embedding-3-large
+  owned_by: OpenAI
+- name: text-embedding-3-small
+  owned_by: OpenAI
+- name: text-embedding-ada-002
+  owned_by: OpenAI
+- name: tts-1
+  owned_by: OpenAI
+- name: tts-1-1106
+  owned_by: OpenAI
+- name: tts-1-hd
+  owned_by: OpenAI
+- name: tts-1-hd-1106
+  owned_by: OpenAI
+- name: whisper-1
+  owned_by: OpenAI

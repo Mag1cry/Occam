@@ -1,0 +1,22 @@
+.venv/
+.pytest_cache/
+__pycache__/
+data*
+.env
+
+# **手写的配置**：`config/.env` 装这台机器的秘密与运行参数（人写）。
+# 和 `data/`（程序写）分开放，是这个系统的一个约定——见 `app/settings.py`。
+config/
+.pytest-tmp/
+.probe-tmp/
+.ruff_cache/
+.coverage
+
+# 运行时产物：Settings.prepare() 会建它，任务正文落在这里（OCC_NEXT_WORKSPACE）
+workspace/
+
+# 覆盖率另起的 basetemp（--basetemp=.pytest-tmp-cov 时产生）
+.pytest-tmp-cov/
+
+# 本机调试时把后端日志落在这里（detached 起法用得到）
+.serve.log

@@ -1,0 +1,19 @@
+id: langgraph-agent
+name: LangGraph Agent
+description: OCC 的官方 LLM 执行者：一段 ReAct 循环，工具调用全部走网关的管道
+version: 0.1.0
+executors:
+  # 带代码的那一条：**它不挑模型**。模型是配置给的（"一段代码被多个配置用"），
+  # 所以这里只有 needs_llm，没有 model——给哪个模型是配置的事。
+  - name: langgraph.agent
+    worker: {entrypoint: "worker.py:worker_entry"}
+    needs_llm: true
+    prompt:
+      system: 你是 OCC 的执行者。用给你的工具把事做完，做完用一句话说清结果。
+    # 旋钮写**声明**（对象形态，带 default）：界面拿它渲染控件，worker 收合并后的值。
+    parameters:
+      temperature: {type: number, default: 0.2, min: 0, max: 2, label: 温度}
+      max_tokens: {type: integer, default: 4096, min: 1, max: 16384, label: 单次回答上限}
+      max_iterations: {type: integer, default: 12, min: 1, max: 64, label: 循环上限}
+      timeout_seconds: {type: number, default: 120, min: 1, max: 900, label: 单次模型调用超时}
+enabled: true

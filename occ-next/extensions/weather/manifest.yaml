@@ -1,0 +1,31 @@
+# 天气包：给运维看的
+#
+# 一个包可以**既有工具又有执行者**——旧代码把这两样拆成两种包类型，还编了
+# "capability 不能有 executors" 的规则，而这份清单两个都有。
+id: weather
+name: 天气
+version: 0.2.0
+description: 查天气。**两种用法**：agent 可以调它，日程可以跑它
+
+tools:
+  # 一条 tools = 一台供给 = 一档审批。
+  # **函数名不用写**——它有哪些函数是问出来的（单例的公开方法就是工具），
+  # 参数 schema 也不写，从函数签名读。
+  - name: weather
+    approval_required: false
+    url: ''
+    entrypoint: provider.py:Weather
+    idempotency: safe-retry
+    enabled: true
+executors:
+  # 日程跑的就是这一条：它**只说话**，要工具走 channel，判决和调用都在网关。
+  - name: weather.collect
+    worker: {entrypoint: "worker.py:collect"}
+    # **它被允许用哪些工具。** 空名单等于一个都不许（默认拒绝）——
+    # 这一栏没有，包写得再对也一个工具都调不动。
+    tools_from: [weather]
+    parameters:
+      # 旋钮：`weather.current` 查哪个城市。`type` 是给人看的，`default` 是给 worker 的终值。
+      city: {type: string, default: 杭州, label: 城市}
+
+enabled: true

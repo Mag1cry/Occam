@@ -1,0 +1,17 @@
+# 一家供应商：**怎么连**（`base_url` / `api_key_env`）+ **它有哪些模型**。
+#
+# 密钥只下**变量名**：`api_key_env` 是那个环境变量的名字，不是密钥本身。
+# worker 自己从环境里读，所以密钥不进声明、不进事件、不进界面。
+#
+# `models` 只是**事实**（这家有哪些模型）；「用哪个」是执行者的事——
+# 当年把模型抬成执行者的身份，于是"换模型"变成了"换执行者"，那条路已经堵死了。
+name: deepseek
+base_url: https://api.deepseek.com/v1
+api_key_env: DEEPSEEK_API_KEY
+models:
+  - name: deepseek-flash
+  - name: deepseek-v4-pro
+    # 这一档的默认旋钮（`parameters` 一类的事实跟供应商走，模型的事实不是配置）
+    parameters: {temperature: 0}
+    context: 128000
+enabled: true

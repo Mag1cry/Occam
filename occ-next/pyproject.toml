@@ -1,0 +1,39 @@
+[project]
+name = "occ-next"
+version = "1.0.0"
+description = "Occam — a local-first control plane for work you delegate to agents"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    # `config/.env` 的解析（`app/settings.py::load_env_file`）。它随 uvicorn[standard]
+    # 也会被装上，但**依赖要显式写**——靠传递依赖，换个安装方式它就没了。
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+    "uvicorn[standard]>=0.30",
+    "fastmcp>=2.0",
+    # Windows 的 Python 不带 tz 数据库：tasks/scheduler.py 用
+    # zoneinfo.ZoneInfo("Asia/Shanghai") 解析计划时区，缺它就直接抛
+    # ZoneInfoNotFoundError。其他平台由系统 tzdata 提供，不必装。
+    "tzdata>=2024.1; sys_platform == 'win32'",
+    "ruamel-yaml>=0.18",
+    "lark-oapi>=1.7.3",
+]
+
+[project.optional-dependencies]
+agent = [
+    "langchain>=1.0",
+    "langchain-openai>=0.3",
+    "langgraph-checkpoint-sqlite>=3.1",
+]
+dev = [
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "src"
+module-root = "."

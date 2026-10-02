@@ -1,0 +1,305 @@
+@import "tailwindcss";
+
+/*
+ * 视觉系统：与 occ-web 同源
+ *
+ * 配色、材质、圆角尺度全部对齐 occ-web（Palantir 风格的近黑中性面 +
+ * 青/琥珀/品红三态色），不另起一套：
+ *
+ * - 表面是**近黑中性灰**（#05070a / #0f1011 / #191a1b），不是蓝调深空；
+ * - 主强调是**青**（#2dd4a7），状态用色盲安全的青/琥珀/品红；
+ * - 圆角克制（8–16px）：Palantir Blueprint 是「2px 圆角、10px 网格、
+ *   数据密集」，occ-web 取其中偏克制的一档，不用大圆角卡片；
+ * - 字号小（11–13px）+ 等宽数字 + 字距拉开的大写小标签；
+ * - 材质靠「淡色渐变 + 内高光 + 柔和投影」，需要时加同色外发光。
+ */
+@theme {
+  /* 表面 */
+  --color-occ-bg: #05070a;
+  --color-occ-surface: #0f1011;
+  --color-occ-elevated: #191a1b;
+
+  /* 文本 */
+  --color-occ-text: #f2f2f2;
+  --color-occ-text2: #b8b3b0;
+  --color-occ-text3: #8b949e;
+  --color-occ-label: #7c8aa0;
+
+  /* 边框 */
+  --color-occ-border: #ffffff0f; /* rgba(255,255,255,0.06) */
+  --color-occ-border-hi: #ffffff1a; /* rgba(255,255,255,0.10) */
+
+  /* 状态与强调：色盲安全（青 / 琥珀 / 品红 / 板岩） */
+  --color-occ-accent: #2dd4a7;
+  --color-occ-accent-light: #5ee0bb;
+  --color-occ-accent-dark: #14b98d;
+
+  --color-occ-ok: #2dd4a7;
+  --color-occ-ok-light: #5ee0bb;
+  --color-occ-ok-dark: #14b98d;
+
+  --color-occ-warn: #ffb020;
+  --color-occ-warn-light: #ffc65c;
+  --color-occ-warn-dark: #d98d0c;
+
+  --color-occ-crit: #ff5470;
+  --color-occ-crit-light: #ff8098;
+  --color-occ-crit-dark: #d93a55;
+
+  --color-occ-unknown: #64748b;
+  --color-occ-unknown-light: #94a3b8;
+  --color-occ-unknown-dark: #475569;
+
+  /* 分隔细线 */
+  --color-hairline: #94a3b824; /* rgba(148,163,184,0.14) */
+
+  /* 次级文字（沿用原名，值随新调色板） */
+  --color-label-2: #b8b3b0;
+  --color-label-3: #8b949e;
+
+  /* 圆角：克制的一档 */
+  --radius-card: 14px;
+  --radius-panel: 12px;
+  --radius-chip: 8px;
+
+  --font-sans: Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system,
+    sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  body {
+    margin: 0;
+    @apply text-occ-text font-sans;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+    /* 底噪：顶部蓝辉 + 右下青辉，和 occ-web 同一套 */
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(45, 130, 255, 0.1), transparent 60%),
+      radial-gradient(800px 500px at 90% 110%, rgba(0, 217, 146, 0.06), transparent 60%),
+      #05070a;
+  }
+
+  /* 键盘焦点可见性：整站统一青色描边 */
+  :where(button, [role="button"], a, select, input, textarea, [tabindex]):focus-visible {
+    outline: 1.5px solid rgba(45, 212, 167, 0.55);
+    outline-offset: 1px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.18);
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.32);
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  /* 玻璃卡片：淡色渐变 + 内高光 + 柔和投影（与 occ-web 同一份配方） */
+  .glass {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    backdrop-filter: blur(14px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 12px 32px -18px rgba(0, 0, 0, 0.8);
+  }
+
+  .glass-strong {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    backdrop-filter: blur(18px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 18px 42px -22px rgba(0, 0, 0, 0.9);
+  }
+
+  .glass-hover {
+    transition:
+      border-color 0.2s,
+      transform 0.2s,
+      box-shadow 0.2s;
+  }
+  .glass-hover:hover {
+    border-color: rgba(148, 163, 184, 0.3);
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 18px 40px -18px rgba(0, 0, 0, 0.9),
+      0 0 24px -12px rgba(45, 212, 167, 0.25);
+  }
+
+  /* 抬升面：面板与卡片用实心表面，靠亮度和投影分层 */
+  .surface {
+    background: linear-gradient(160deg, rgba(148, 163, 184, 0.08), rgba(255, 255, 255, 0.015));
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 8px 24px -16px rgba(0, 0, 0, 0.85);
+  }
+
+  /* 战术网格：双层 + 顶部渐隐（画布底衬，不随内容移动） */
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.032) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.032) 1px, transparent 1px),
+      linear-gradient(rgba(148, 163, 184, 0.014) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.014) 1px, transparent 1px);
+    background-size:
+      96px 96px,
+      96px 96px,
+      24px 24px,
+      24px 24px;
+    mask-image: radial-gradient(ellipse 90% 80% at 50% 0%, black 30%, transparent 100%);
+  }
+
+  /*
+   * 小标签：字号与颜色统一，**字距只给纯拉丁串**
+   *
+   * occ-web 的 `.label` 是全大写英文专用，0.2em 字距套到中文上会被撑散
+   * （「引用该配置」渲染成「引 用 该 配 置」）。中文没有字距这一说，
+   * 所以默认档不带字距，拉丁串要战术感就显式加 `.label-en`。
+   */
+  .label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #7c8aa0;
+  }
+
+  .label-en {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #7c8aa0;
+  }
+
+  /* 数字：等宽 + 表格数字 */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 状态色（色盲安全：青 / 琥珀 / 品红） */
+  .c-ok {
+    color: #2dd4a7;
+  }
+  .c-warn {
+    color: #ffb020;
+  }
+  .c-crit {
+    color: #ff5470;
+  }
+  .c-unknown {
+    color: #64748b;
+  }
+
+  .glow-ok {
+    box-shadow: 0 0 12px rgba(45, 212, 167, 0.55);
+  }
+  .glow-warn {
+    box-shadow: 0 0 12px rgba(255, 176, 32, 0.55);
+  }
+  .glow-crit {
+    box-shadow: 0 0 12px rgba(255, 84, 112, 0.6);
+  }
+
+  /* 呼吸点：外扩圆环 */
+  .pulse {
+    position: relative;
+  }
+  .pulse::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: 9999px;
+    border: 1px solid currentColor;
+    opacity: 0.45;
+    animation: pulse-ring 2.2s ease-out infinite;
+  }
+
+  /* 淡入 */
+  .fade-in {
+    animation: fadeIn 0.35s ease both;
+  }
+
+  /* 顶栏/面板的辉光分割线 */
+  .topline {
+    position: relative;
+  }
+  .topline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(45, 212, 167, 0.35),
+      rgba(45, 130, 255, 0.25),
+      transparent
+    );
+  }
+
+  /* 克制的动画 */
+  .transition-smooth {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* iOS 的连续曲率圆角在这个配色体系里不用了：Palantir 一脉是低圆角 */
+
+  .hairline {
+    border-top: 0.5px solid var(--color-hairline);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
