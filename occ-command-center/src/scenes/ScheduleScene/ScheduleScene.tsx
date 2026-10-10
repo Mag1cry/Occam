@@ -40,6 +40,9 @@ import { workerAliveOf, workerUnreconciledOf,
 import { ScheduleEditorOverlay } from '../../components/overlay/ScheduleEditorOverlay';
 import { executeScheduleCommand, executeTaskCommand } from '../../lib/objectCommands';
 import { useGatewayStore } from '../../store/gatewayStore';
+import { bottomPanelClass } from '../../lib/overlayLayout';
+import { useShortViewport, useWideViewport } from '../../hooks/useViewportFlags';
+import { useScrollFade } from '../../hooks/useScrollFade';
 
 /** Entry / Definition / occurrence 是资料节点，不是外层 Schedule 节点 */
 const nodeTypes = {
@@ -80,6 +83,30 @@ export function ScheduleScene({ scheduleId, snapshot }: ScheduleSceneProps) {
     'attention',
   ]);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  /*
+    矮视口（手机横屏）上，**左下这个面板默认收成一行，而且和左上摘要卡互斥**。
+
+    不是调参数能解决的：360 高时，锚点 + 摘要栈封顶后占到 y=204，
+    而这个面板的底部在 250——收起 36px 时顶边 214，刚够不撞；
+    **一旦展开就必然压上去**。所以在矮视口上让它们互斥：你点了"看清单"，
+    那摘要就先让开，收起清单它再回来。桌面上两者都够地方，这条不生效。
+
+    `userCollapsed` 为 `null` 表示**还没表过态**——此时跟着视口走；
+    用户点过之后以他为准，改窗口大小不会把他选的又翻回去。
+  */
+  const shortViewport = useShortViewport();
+  const [userCollapsed, setUserCollapsed] = useState<boolean | null>(null);
+  const partitionsCollapsed = userCollapsed ?? shortViewport;
+  /** 分区面板限高 40vh，展开一个分区就可能超——超了要看得出来 */
+  const [分区滚动ref, 分区滚动类] = useScrollFade<HTMLDivElement>();
+  /*
+    面板位置：**没选中就贴底。**
+
+    操作牌只在选中了对象时才渲染，而没选中是常态——那时候抬着 110px 是纯浪费。
+    只有"有操作牌、而且窄到它会伸过来"时才让位（见 `bottomPanelClass`）。
+  */
+  const 宽屏 = useWideViewport();
+  const 面板位置 = bottomPanelClass(selectedNodeId !== null, 宽屏);
   /** 正在看结果的子 Task id（`null` 表示没有那个浮窗） */
   const [viewingResultFor, setViewingResultFor] = useState<string | null>(null);
   /** 正在编辑的这条日程（`null` 表示没有那个表单） */
@@ -202,6 +229,11 @@ export function ScheduleScene({ scheduleId, snapshot }: ScheduleSceneProps) {
 
       {/* 概览：贴在左上角返回锚点下方；顶部中央留给 HUD */}
       <SceneOverlayStack>
+        {/*
+          矮视口上"摘要"和"清单"互斥：展开左下那份清单时，摘要让开。
+          桌面上两者都够地方，这条不生效（见 `partitionsCollapsed` 那段说明）。
+        */}
+        {!(shortViewport && !partitionsCollapsed) && (
         <SceneFacts
           title={schedule?.label ?? 'Schedule'}
           facts={[
@@ -239,12 +271,32 @@ export function ScheduleScene({ scheduleId, snapshot }: ScheduleSceneProps) {
             },
           ]}
         />
+        )}
       </SceneOverlayStack>
 
       {/* 子 Task 分区 + 执行历史：仅在 Schedule 内部 */}
-      <div className="fixed bottom-24 left-5 z-30 w-[320px] max-h-[40vh] overflow-auto">
+      <div
+        ref={分区滚动ref}
+        className={`fixed left-5 z-30 w-[min(320px,calc(100vw-2.5rem))] max-h-[40vh] overflow-auto ${面板位置} ${分区滚动类}`}
+      >
         <div className="glass rounded-xl p-3">
-          <div className="label topline pb-1.5 mb-2">子 Task 分区 · 仅编排台内部</div>
+          <button
+            type="button"
+            onClick={() => setUserCollapsed(!partitionsCollapsed)}
+            aria-expanded={!partitionsCollapsed}
+            className={`w-full flex items-center justify-between label ${
+              partitionsCollapsed ? '' : 'topline pb-1.5 mb-2'
+            }`}
+          >
+            <span>子 Task 分区 · 仅编排台内部</span>
+            {partitionsCollapsed ? (
+              <ChevronRight className="w-3 h-3 shrink-0" />
+            ) : (
+              <ChevronDown className="w-3 h-3 shrink-0" />
+            )}
+          </button>
+
+          {!partitionsCollapsed && (
           <div className="space-y-2">
             {PARTITIONS.map((partition) => {
               const tasks = model.partitions[partition.key];
@@ -284,9 +336,11 @@ export function ScheduleScene({ scheduleId, snapshot }: ScheduleSceneProps) {
               );
             })}
           </div>
+          )}
 
           {/* 执行历史折叠：只改变可见节点，不改变聚合 */}
-          {model.hiddenOccurrenceCount > 0 || historyExpanded ? (
+          {!partitionsCollapsed &&
+          (model.hiddenOccurrenceCount > 0 || historyExpanded ? (
             <button
               type="button"
               onClick={() => setHistoryExpanded((prev) => !prev)}
@@ -306,7 +360,7 @@ export function ScheduleScene({ scheduleId, snapshot }: ScheduleSceneProps) {
                 {model.visibleOccurrences.length}/{model.allOccurrences.length}
               </span>
             </button>
-          ) : null}
+          ) : null)}
         </div>
       </div>
 

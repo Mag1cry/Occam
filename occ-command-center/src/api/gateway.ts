@@ -1,5 +1,6 @@
 import type { TaskNode } from '../core/types/node';
 import type { SelectGroup } from '../lib/selectGroups';
+import { authHeaders, endpointFor, streamUrl } from './connection';
 
 /**
  * Core 控制事件类型
@@ -339,7 +340,18 @@ export interface GatewayDevice {
   health: string;
 }
 
-const base = import.meta.env.VITE_GATEWAY_URL ?? '';
+/*
+  **地址和凭据都是运行时读的，不是这里的一个常量。**
+
+  以前这儿是 `const base = import.meta.env.VITE_GATEWAY_URL ?? ''` —— 那是 Vite
+  打包时替换掉的字符串，地址被烧进 bundle，换个后端就得重新打包。打包成 Android
+  应用之后这条是死路（APK 从 `https://localhost` 加载，对后端必然跨域，地址必须是
+  绝对的，而绝对地址没法在运行时给）。
+
+  所以下面每一处都改成调用时向 `connection` 要地址、要头。**签名一个都没动**——
+  `src/test/setup.ts` 按模块路径整块 mock 这个文件，约 50 个文件按路径 import，
+  改的是函数体，不是搬家。
+*/
 
 /**
  * 「本地写死」那个供应商的 key
@@ -389,7 +401,7 @@ export function isUnauthorized(error: unknown): boolean {
  * 网关自己的 `{"error": ...}` 只在 HTTP 200 的拒绝结果里出现。
  * 两者都读不到时退回状态码，不编造原因。
  */
-async function errorMessage(response: Response, fallback: string): Promise<string> {
+export async function errorMessage(response: Response, fallback: string): Promise<string> {
   try {
     const body = (await response.json()) as { detail?: unknown; error?: unknown };
     const detail = body.detail ?? body.error;
@@ -845,7 +857,7 @@ export async function getGatewaySnapshot(): Promise<GatewaySnapshot> {
     const { buildMockSnapshot } = await import('../mock/snapshot');
     return buildMockSnapshot();
   }
-  const response = await fetch(`${base}/api/state`);
+  const response = await fetch(endpointFor('/api/state'), { headers: authHeaders() });
   if (!response.ok) throw new GatewayError(await errorMessage(response, 'Gateway snapshot failed'), response.status);
   return mapLiveState(await response.json() as LiveState);
 }
@@ -871,7 +883,8 @@ function encodeRefPath(ref: string): string {
  * 这个唯一能自救的信息。
  */
 export async function resolveObject(ref: string): Promise<ResolvedReference> {
-  const response = await fetch(`${base}/api/objects/${encodeRefPath(ref)}`);
+  const response = await fetch(endpointFor(`/api/objects/${encodeRefPath(ref)}`),
+                            { headers: authHeaders() });
   if (!response.ok) throw new GatewayError(await errorMessage(response, '引用解析失败'), response.status);
   const wire = await response.json() as {
     kind: string;
@@ -906,9 +919,9 @@ export async function resolveObject(ref: string): Promise<ResolvedReference> {
  * 不必为此多一个依赖。超了上限后端会说，原因原样带上来。
  */
 export async function uploadWorkspaceFile(name: string, text: string): Promise<string> {
-  const response = await fetch(`${base}/api/workspace/files`, {
+  const response = await fetch(endpointFor('/api/workspace/files'), {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: authHeaders({ 'content-type': 'application/json' }),
     body: JSON.stringify({ name, text }),
   });
   if (!response.ok) {
@@ -937,10 +950,9 @@ export async function sendGatewayCommand(
   taskId = '',
   payload: Record<string, unknown> = {}
 ): Promise<GatewayCommandResponse> {
-  const origin = base || (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8000');
-  const response = await fetch(`${origin}/api/command`, {
+  const response = await fetch(endpointFor('/api/command'), {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: authHeaders({ 'content-type': 'application/json' }),
     // 新的命令面只有两个字段：命令名 + 载荷。`task_id` 是载荷的一部分
     // （它是"这条命令冲着哪个 Task 去"，不是另一个通道）。
     body: JSON.stringify({ command, payload: taskId ? { ...payload, task_id: taskId } : payload }),
@@ -1545,7 +1557,8 @@ export interface AgentTurn {
  * 快照不合适。
  */
 export async function getAgentAudit(taskId: string): Promise<AgentAudit> {
-  const response = await fetch(`${base}/api/tasks/${encodeURIComponent(taskId)}/agent-audit`);
+  const response = await fetch(endpointFor(`/api/tasks/${encodeURIComponent(taskId)}/agent-audit`),
+                               { headers: authHeaders() });
   if (!response.ok) throw new GatewayError(await errorMessage(response, 'Agent 审计读取失败'), response.status);
   const body = await response.json() as AgentAudit;
   return { ...body, calls: body.calls ?? [] };
@@ -1561,7 +1574,8 @@ export async function getAgentAudit(taskId: string): Promise<AgentAudit> {
  * 从 checkpoint 回读时用 `text`。两处都要认，只认一个会在某种情况下显示成空。
  */
 export async function getTaskResult(taskId: string): Promise<TaskResult | null> {
-  const response = await fetch(`${base}/api/tasks/${encodeURIComponent(taskId)}`);
+  const response = await fetch(endpointFor(`/api/tasks/${encodeURIComponent(taskId)}`),
+                               { headers: authHeaders() });
   if (!response.ok) throw new GatewayError(await errorMessage(response, 'Task 读取失败'), response.status);
   const body = await response.json() as { output?: unknown };
   return normalizeResult(body.output);
@@ -1654,7 +1668,7 @@ export function subscribeGatewayEvents(
     if (closed) return;
     lastHeardAt = Date.now();
     report(attempt === 0 ? 'connecting' : 'retrying');
-    source = new EventSource(`${base}/api/events`);
+    source = new EventSource(streamUrl('/api/events'));
     source.onopen = () => {
       attempt = 0;
       lastHeardAt = Date.now();

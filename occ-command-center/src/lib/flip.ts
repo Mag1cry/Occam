@@ -21,14 +21,47 @@ export interface Rect {
  * 左上角焦点锚点的目标矩形
  *
  * FocusAnchor 组件必须使用同一组尺寸常量，保证飞行终点与锚点严丝合缝。
+ *
+ * ## 两档，判据在 `anchorRectFor`
+ *
+ * 宽屏是「箭头 + 名字 + 状态」那块牌子；窄屏只留箭头和状态点——名字 HUD 上本来
+ * 就有（「编排台 · weather.daily」），手机上没必要说两遍，而那一列要腾给 HUD。
  */
 export const ANCHOR_POSITION = { x: 20, y: 20 };
 export const ANCHOR_SIZE = { width: 208, height: 56 };
-export const ANCHOR_RECT: Rect = {
-  x: ANCHOR_POSITION.x,
-  y: ANCHOR_POSITION.y,
-  ...ANCHOR_SIZE,
-};
+/** 窄屏：只剩箭头 + 状态点 */
+export const ANCHOR_COMPACT_SIZE = { width: 48, height: 36 };
+
+/**
+ * 窄到多少收成图标
+ *
+ * **不是 Tailwind 的 `md`(768)**：真机横屏是 800 宽，用 768 会漏掉它。
+ *
+ * 选 1024 还白捡一个好处：jsdom 的默认 `window.innerWidth` 正好是 1024，
+ * 落在宽档——所以钉着 `width: 208px` 的那几条断言不用改。
+ */
+export const COMPACT_ANCHOR_MAX_WIDTH = 1024;
+
+export function isCompactAnchor(viewportWidth: number): boolean {
+  return viewportWidth < COMPACT_ANCHOR_MAX_WIDTH;
+}
+
+export function anchorSizeFor(compact: boolean): { width: number; height: number } {
+  return compact ? ANCHOR_COMPACT_SIZE : ANCHOR_SIZE;
+}
+
+/**
+ * 当前该用的锚点矩形
+ *
+ * **画面和飞行终点必须走同一个函数。** 只让 CSS 变窄而这里不变的话，每次进/出场景
+ * 都会飞到一个比锚点宽 160px 的框里——落点对不上，而且只在手机上看得出来。
+ */
+export function anchorRectFor(compact: boolean): Rect {
+  return { x: ANCHOR_POSITION.x, y: ANCHOR_POSITION.y, ...anchorSizeFor(compact) };
+}
+
+/** 宽屏那一档。给不需要管视口的地方当默认值用。 */
+export const ANCHOR_RECT: Rect = anchorRectFor(false);
 
 /**
  * 测量元素位置

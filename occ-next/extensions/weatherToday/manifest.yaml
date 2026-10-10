@@ -1,6 +1,6 @@
 id: weatherToday
 name: 天气固定化日程智能体
-description: '-'
+description: 'weatherToday'
 executors:
   - name: weatherToday
     executor: langgraph.agent
@@ -8,7 +8,7 @@ executors:
       provider: deepseek
       name: deepseek-flash
     prompt:
-      system: 你可以调用天气工具来查看今日天气
+      system: ''
     tools_from:
       - weather
     tighten:

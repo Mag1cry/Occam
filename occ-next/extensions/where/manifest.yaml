@@ -1,0 +1,14 @@
+id: where
+name: 天气不用审批的智能体
+description: where
+executors:
+  - name: where
+    executor: langgraph.agent
+    model:
+      provider: uniapi
+      name: gpt-5.6-luna
+    prompt:
+      system: ''
+    tools_from:
+      - weather
+    tighten: []

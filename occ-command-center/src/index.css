@@ -270,6 +270,32 @@
     );
   }
 
+  /*
+    「底下还有内容」的淡出提示
+
+    用 `mask-image` 而不是盖一层渐变：它**不进 DOM、不改布局**，所以加在哪个
+    滚动容器上都不动那棵结构（`[data-scene-overlay-stack] > div` 这类直接子选择器
+    也就不会被多数出来一块）。哪条边要淡由 `useScrollFade` 在运行时决定。
+
+    淡出 26px：够看出"被切了"，又不至于吃掉一整行字。内容多到滚不完时就该淡，
+    滚到底了就不该淡——**那正是"更多"和"到底了"的区别**，所以这三条不能合成一条。
+  */
+  .occ-scroll-fade-below {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent);
+  }
+  .occ-scroll-fade-above {
+    mask-image: linear-gradient(to top, #000 calc(100% - 26px), transparent);
+  }
+  .occ-scroll-fade-both {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 26px,
+      #000 calc(100% - 26px),
+      transparent 100%
+    );
+  }
+
   /* 克制的动画 */
   .transition-smooth {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);

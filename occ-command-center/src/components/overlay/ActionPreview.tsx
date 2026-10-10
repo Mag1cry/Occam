@@ -20,6 +20,7 @@ import { GlassPanel } from '../ui/GlassPanel';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import type { Command } from '../../core/types/projection';
+import { useScrollFade } from '../../hooks/useScrollFade';
 
 export interface ActionPreviewProps {
   /** 目标对象 */
@@ -41,6 +42,7 @@ export interface ActionPreviewProps {
 const PREVIEW_TTL_MS = 60_000;
 
 export function ActionPreview({
+
   targetId,
   targetLabel,
   command,
@@ -48,6 +50,8 @@ export function ActionPreview({
   onConfirm,
   onCancel,
 }: ActionPreviewProps) {
+  /** 正文限高，长内容会被切——切了要看得出来 */
+  const [正文滚动ref, 正文滚动类] = useScrollFade<HTMLDListElement>();
   const [generatedAt] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
 
@@ -61,8 +65,8 @@ export function ActionPreview({
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50">
-      <GlassPanel variant="strong" className="w-[420px] p-5">
-        <div className="flex items-start justify-between mb-4">
+      <GlassPanel variant="strong" className="w-[min(420px,92vw)] max-h-[85vh] p-5 flex flex-col">
+        <div className="flex items-start justify-between mb-4 shrink-0">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-occ-warn" />
             <span className="text-base font-medium text-white">命令预览</span>
@@ -76,7 +80,7 @@ export function ActionPreview({
           </button>
         </div>
 
-        <dl className="space-y-2 text-sm">
+        <dl ref={正文滚动ref} className={`space-y-2 text-sm min-h-0 flex-1 overflow-auto ${正文滚动类}`}>
           <Row label="目标对象" value={`${targetLabel}（${targetId}）`} />
           <Row label="实际命令" value={command.id} mono />
           {/*
@@ -98,7 +102,7 @@ export function ActionPreview({
           />
         </dl>
 
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between shrink-0">
           {expired ? (
             <Badge variant="danger" size="sm">
               预览已过期

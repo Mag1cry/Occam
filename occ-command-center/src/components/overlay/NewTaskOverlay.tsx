@@ -33,6 +33,7 @@ import { taskExecutorChoices } from '../../lib/executorGroups';
 import { firstOptionValue } from '../../lib/selectGroups';
 import { useLayoutStore } from '../../store/layoutStore';
 import { useGatewayStore } from '../../store/gatewayStore';
+import { useScrollFade } from '../../hooks/useScrollFade';
 
 export interface NewTaskOverlayProps {
   /** 菜单位置：作为新 Task 的初始 World 坐标 */
@@ -48,6 +49,9 @@ export interface NewTaskOverlayProps {
 }
 
 export function NewTaskOverlay({ initialPosition, snapshot, onClose }: NewTaskOverlayProps) {
+  /** 正文限高，长内容会被切——切了要看得出来 */
+  const [正文滚动ref, 正文滚动类] = useScrollFade<HTMLDivElement>();
+
   // 分组只在快照变了才重算：敲摘要时不该重排几百条配置
   const groups = useMemo(() => taskExecutorChoices(snapshot), [snapshot]);
   const [summary, setSummary] = useState('');
@@ -107,8 +111,8 @@ export function NewTaskOverlay({ initialPosition, snapshot, onClose }: NewTaskOv
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50">
-      <GlassPanel variant="strong" className="w-[440px] p-5">
-        <div className="flex items-start justify-between mb-4">
+      <GlassPanel variant="strong" className="w-[min(440px,92vw)] max-h-[85vh] p-5 flex flex-col">
+        <div className="flex items-start justify-between mb-4 shrink-0">
           <div>
             <div className="text-base font-medium text-white">新建任务</div>
             <div className="text-xs text-gray-500 mt-1">
@@ -124,7 +128,7 @@ export function NewTaskOverlay({ initialPosition, snapshot, onClose }: NewTaskOv
           </button>
         </div>
 
-        <div className="space-y-3">
+        <div ref={正文滚动ref} className={`space-y-3 min-h-0 flex-1 overflow-auto ${正文滚动类}`}>
           <label className="block">
             <span className="text-xs text-gray-400">委托摘要</span>
             <input
@@ -184,10 +188,10 @@ export function NewTaskOverlay({ initialPosition, snapshot, onClose }: NewTaskOv
         </div>
 
         {error && (
-          <div className="mt-3 text-[11px] text-occ-crit-light break-words">提交失败：{error}</div>
+          <div className="mt-3 shrink-0 text-[11px] text-occ-crit-light break-words">提交失败：{error}</div>
         )}
 
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between shrink-0">
           <Badge variant="info" size="sm">
             真实 Core 命令
           </Badge>

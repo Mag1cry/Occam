@@ -24,6 +24,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -79,6 +80,52 @@ def load_env_file(root: str | Path | None = None) -> list[str]:
     return added
 
 
+def parse_allowed_origins(raw: str) -> tuple[str, ...]:
+    """`OCC_NEXT_ALLOWED_ORIGINS` → 一串**裸 origin**。空/只有一个逗号 = 空清单。
+
+    ## 为什么是精确白名单，不是 `*`
+
+    局域网内后端**按来源 IP 放行、不要令牌**（`gateway/access/policy.py`）。CORS 要是
+    写成 `*`，用户浏览器里**任意一个网页**都能 `POST http://192.168.x.x:8765/api/command`，
+    而那个请求会被**当作局域网自动信任**——`mcp.register` 再把 payload 交给 `Popen`。
+    `*` 在这里等于给每个网站发一台能起进程的机器。
+
+    所以这里只接受**逐字比对**的 origin：`https://localhost.evil.com`、`https://localhost/`、
+    `https://localhost:443`、`https://LOCALHOST` 都是不同的字符串，一个都不匹配
+    （`:443` 那条尤其反直觉，但浏览器报的 origin 也就不带默认端口，两边一致）。
+
+    ## 为什么不合规就抛
+
+    打错的清单是 **fail-closed** 的——请求全被挡掉。但它**表现成一个浏览器 CORS 错误**：
+    后端一切正常、日志里什么都没有，你要对着一个看不懂的前端报错查半天。这个仓库躲的就是
+    这一类问题（`_mount_web` 里"设了但目录不在要说出来"是同一个立场），所以宁可在启动那一刻
+    就指名道姓地炸掉。`ValueError` 从 `from_env` 冒出，`serve.py` 的装配阶段直接失败。
+    """
+    entries = [item.strip() for item in raw.split(",")]
+    return tuple(_one_origin(item) for item in entries if item)
+
+
+def _one_origin(entry: str) -> str:
+    """一个条目 → 它自己，或者一条说清楚哪儿不对的 `ValueError`。"""
+    parts = urlsplit(entry)
+    why = ""
+    if parts.scheme not in ("http", "https"):
+        why = "只认 http:// 或 https:// 开头"
+    elif not parts.hostname:
+        why = "没有主机名"
+    elif parts.path or parts.query or parts.fragment:
+        why = "只能写到端口为止，后面不许有路径、查询或片段"
+    elif parts.username or parts.password:
+        why = "不许带用户名密码"
+    elif entry != entry.lower():
+        why = "必须全小写（浏览器报的 origin 就是小写，大写永远匹配不上）"
+    if why:
+        raise ValueError(
+            f"OCC_NEXT_ALLOWED_ORIGINS 里的这一条不对：{entry!r}——{why}。"
+            f"正确写法形如 https://localhost 或 http://192.168.1.9:8765")
+    return entry
+
+
 @dataclass(frozen=True)
 class Settings:
     root: Path
@@ -91,6 +138,9 @@ class Settings:
     #: 界面归 vite dev（5173，带热更新），这时候再在这儿挂一份旧的构建产物，
     #: 只会让人对着一个不会变的东西调界面。
     web_dir: Path | None = None
+    #: 允许跨域访问 `/api/` 的**裸 origin** 白名单。**空 = 一条 CORS 头都不加**
+    #: （本机与局域网形态就是这个）。解析规则见 `parse_allowed_origins`。
+    allowed_origins: tuple[str, ...] = ()
 
     @property
     def state(self) -> Path:
@@ -109,6 +159,16 @@ class Settings:
     @property
     def access_token(self) -> Path:
         return self.state / "access-token.json"
+
+    @property
+    def access_devices(self) -> Path:
+        """已接入设备的台账。**和令牌同一个理由放在状态目录**：
+
+        工作区的读工具是给执行者用的，把凭据放在它们读得到的地方，等于把
+        "能拿到凭据"降级成"能跑一个只读工具"。里面只有摘要（`pairing.py` 存 SHA-256），
+        但那是第二道，不是第一道。
+        """
+        return self.state / "access-devices.json"
 
     @property
     def launches(self) -> Path:
@@ -150,6 +210,8 @@ class Settings:
             host=os.environ.get("OCC_NEXT_HOST", "127.0.0.1"),
             port=int(os.environ.get("OCC_NEXT_PORT", "8765")),
             web_dir=where("OCC_NEXT_WEB_DIR", Path(web)) if web else None,
+            allowed_origins=parse_allowed_origins(
+                os.environ.get("OCC_NEXT_ALLOWED_ORIGINS", "")),
         )
 
 

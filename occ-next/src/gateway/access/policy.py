@@ -71,17 +71,28 @@ class Caller:
         return EXTERNAL
 
 
-def judge_caller(caller: Caller, *, token: str) -> Decision:
-    """放行条件是**一条**：在信任网段 **或** 凭据对。
+def judge_caller(caller: Caller, *, token: str, paired: bool = False) -> Decision:
+    """放行条件是**一条**：在信任网段 **或** 令牌对 **或** 这台设备已接入。
 
-    写成两条（来源一条、令牌一条）会把"外网 + 凭据正确"判成拒绝——顺序器只管与，
-    而这里要的是或。
+    写成三条（来源一条、令牌一条、设备一条）会把"外网 + 凭据正确"判成拒绝——
+    顺序器只管与，而这里要的是或。
+
+    ## 三个分支各自是什么
+
+    - **信任网段**：来源地址说了算。局域网就在你手边，和坐在机器前没有区别。
+    - **令牌**：`data/access-token.json` 那**一根**，全机器共用。它是**根**——
+      首次引导、桌面浏览器直接用。
+    - **设备凭据**：`pairing.py` 按设备签发的那条路。**调用方要先查过台账**
+      （`PairingDesk.verify`），这里只收一个布尔——`access/` 这一层不该同时认识
+      "来源怎么分级"和"设备台账长什么样"，那两件事分别是两个文件的事。
+
+    `paired` 是**已经核实过**的结论，不是"请求里带了点什么"。
     """
     trusted = caller.level in TRUSTED
     presented = bool(token) and _matches(caller.token, token)
     return judge([Requirement(
-        trusted or presented,
-        "来源不在信任网段，凭据也不对" if not presented else "来源不在信任网段")])
+        trusted or presented or paired,
+        "来源不在信任网段，凭据也不是这台机器认识的")])
 
 
 def _matches(presented: str, expected: str) -> bool:

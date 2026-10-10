@@ -18,6 +18,7 @@ import { Button } from '../ui/Button';
 import { CascadingSelect } from '../ui/CascadingSelect';
 import { FilePickerButton } from '../ui/FilePickerButton';
 import { firstOptionValue, type SelectGroup, type SelectOption } from '../../lib/selectGroups';
+import { useScrollFade } from '../../hooks/useScrollFade';
 
 interface ActionFormFieldBase {
   name: string;
@@ -74,6 +75,9 @@ export function ActionFormOverlay({
   onSubmit,
   onClose,
 }: ActionFormOverlayProps) {
+  /** 正文限高，长内容会被切——切了要看得出来 */
+  const [正文滚动ref, 正文滚动类] = useScrollFade<HTMLDivElement>();
+
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(fields.map((field) => [
       field.name,
@@ -107,8 +111,8 @@ export function ActionFormOverlay({
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50">
-      <GlassPanel variant="strong" className="w-[460px] p-5">
-        <div className="flex items-start justify-between mb-4">
+      <GlassPanel variant="strong" className="w-[min(460px,92vw)] max-h-[85vh] p-5 flex flex-col">
+        <div className="flex items-start justify-between mb-4 shrink-0">
           <div>
             <div className="text-base font-medium text-white">{title}</div>
             <div className="text-xs text-gray-500 mt-1">{description}</div>
@@ -122,7 +126,7 @@ export function ActionFormOverlay({
           </button>
         </div>
 
-        <div className="space-y-3">
+        <div ref={正文滚动ref} className={`space-y-3 min-h-0 flex-1 overflow-auto ${正文滚动类}`}>
           {fields.map((field) => {
             if (field.groups) {
               // 两级下拉不能塞进 <label>：一个 label 只能绑一个控件，两个 select
@@ -195,7 +199,7 @@ export function ActionFormOverlay({
           <div className="mt-3 text-[11px] text-occ-crit-light break-words">提交失败：{error}</div>
         )}
 
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between shrink-0">
           <Badge variant="info" size="sm">
             {command}
           </Badge>

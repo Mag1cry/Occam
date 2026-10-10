@@ -40,6 +40,13 @@ interface GatewayStoreState {
   error: string | null;
   load: () => Promise<void>;
   connect: () => () => void;
+  /**
+   * 回到"什么都没读到"
+   *
+   * **换后端时必须调**：快照是**那一台机器**的事实，地址换了之后继续显示它，
+   * 画布上就是另一个世界的节点——而界面上没有任何东西说明这件事。
+   */
+  reset: () => void;
 }
 
 export const useGatewayStore = create<GatewayStoreState>((set) => ({
@@ -48,6 +55,13 @@ export const useGatewayStore = create<GatewayStoreState>((set) => ({
   stream: 'connecting',
   lastReadyAt: null,
   error: null,
+  reset: () => set({
+    snapshot: null,
+    status: 'loading',
+    stream: 'connecting',
+    lastReadyAt: null,
+    error: null,
+  }),
   load: async () => {
     set((state) => ({ status: state.snapshot ? state.status : 'loading', error: null }));
     try {

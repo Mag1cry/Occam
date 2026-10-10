@@ -12,6 +12,7 @@ import { FloatingHud } from './components/overlay/FloatingHud';
 import { FocusAnchor } from './components/overlay/FocusAnchor';
 import { OutputOverlay } from './components/overlay/OutputOverlay';
 import { useFocusLeap } from './hooks/useFocusLeap';
+import { useConnection } from './hooks/useConnection';
 import { useEffect } from 'react';
 
 /** 没有悬着的输出时那个**稳定**的空表（见下面选择器那段） */
@@ -29,7 +30,18 @@ function App() {
     （实测：`Maximum update depth exceeded`）。所以空值只取出去，兜底放在选择器外面。
   */
   const outputs = useGatewayStore((state) => state.snapshot?.outputs) ?? EMPTY_OUTPUTS;
-  useEffect(() => { void load(); return connect(); }, [connect, load]);
+  const reset = useGatewayStore((state) => state.reset);
+  /*
+    **连接变了就重来一遍。** `connection` 的引用只在地址或凭据真的改了之后才换，
+    所以这个 effect 平时不会重跑。换后端时它做三件事，缺一不可：
+    丢掉旧快照（否则画布上是**另一台机器**的事实）、重读、把 SSE 那条流按新地址重开。
+  */
+  const connection = useConnection();
+  useEffect(() => {
+    reset();
+    void load();
+    return connect();
+  }, [connect, load, reset, connection]);
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-occ-bg">

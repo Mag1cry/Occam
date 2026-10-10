@@ -9,14 +9,22 @@
 
 import { useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { ANCHOR_POSITION, ANCHOR_SIZE } from '../../lib/flip';
+import { ANCHOR_POSITION, anchorSizeFor } from '../../lib/flip';
 import { useSceneStore } from '../../store/sceneStore';
 import { useFocusLeap } from '../../hooks/useFocusLeap';
+import { useCompactAnchor } from '../../hooks/useViewportFlags';
 
 export function FocusAnchor() {
   const currentScene = useSceneStore((state) => state.currentScene);
   const stack = useSceneStore((state) => state.stack);
   const { exitScene, isFlying } = useFocusLeap();
+  /*
+    窄屏只剩箭头和状态点。**名字和状态文字不是"藏起来"，是根本不渲染**——
+    它们 HUD 上已经说了一遍（「编排台 · weather.daily」），而 48px 里也塞不下。
+    HUD 那边留着它的位置，见 `FloatingHud` 的 `paddingInline`。
+  */
+  const compact = useCompactAnchor();
+  const size = anchorSizeFor(compact);
 
   const frame = stack[stack.length - 1];
   const isChildScene = currentScene !== 'world';
@@ -65,12 +73,14 @@ export function FocusAnchor() {
       type="button"
       onClick={() => !isFlying && exitScene()}
       disabled={isFlying}
-      className="fixed z-50 rounded-xl glass-strong flex items-center gap-2.5 px-3 text-left transition-smooth hover:border-occ-accent/40 disabled:opacity-50"
+      className={`fixed z-50 rounded-xl glass-strong flex items-center text-left transition-smooth hover:border-occ-accent/40 disabled:opacity-50 ${
+        compact ? 'gap-1 px-1.5 justify-center' : 'gap-2.5 px-3'
+      }`}
       style={{
         left: ANCHOR_POSITION.x,
         top: ANCHOR_POSITION.y,
-        width: ANCHOR_SIZE.width,
-        height: ANCHOR_SIZE.height,
+        width: size.width,
+        height: size.height,
       }}
       aria-label="返回上一场景"
     >
@@ -79,14 +89,16 @@ export function FocusAnchor() {
         className="w-2 h-2 rounded-full shrink-0"
         style={{ background: color, boxShadow: `0 0 8px ${color}aa` }}
       />
-      <span className="flex flex-col min-w-0">
-        <span className="text-[13px] font-semibold text-slate-100 truncate">
-          {label}
+      {!compact && (
+        <span className="flex flex-col min-w-0">
+          <span className="text-[13px] font-semibold text-slate-100 truncate">
+            {label}
+          </span>
+          <span className="num text-[11px] text-slate-500 truncate">
+            {stateText}
+          </span>
         </span>
-        <span className="num text-[11px] text-slate-500 truncate">
-          {stateText}
-        </span>
-      </span>
+      )}
     </button>
   );
 }

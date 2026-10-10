@@ -28,6 +28,7 @@ import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { GlassPanel } from '../ui/GlassPanel';
 import { Markdown } from '../ui/Markdown';
+import { useScrollFade } from '../../hooks/useScrollFade';
 
 export interface MarkdownOverlayProps {
   /** 这是什么（如「执行结果」「审批申请」） */
@@ -51,6 +52,9 @@ export function MarkdownOverlay({
   footer,
   onClose,
 }: MarkdownOverlayProps) {
+  /** 正文限高，长内容会被切——切了要看得出来 */
+  const [正文滚动ref, 正文滚动类] = useScrollFade<HTMLDivElement>();
+
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50">
       {/*
@@ -80,7 +84,7 @@ export function MarkdownOverlay({
           </button>
         </div>
 
-        <div className="mt-4 min-h-0 flex-1 overflow-auto rounded border border-white/10 bg-black/20 p-4">
+        <div ref={正文滚动ref} className={`mt-4 min-h-0 flex-1 overflow-auto rounded border border-white/10 bg-black/20 p-4 ${正文滚动类}`}>
           {content.trim()
             ? <Markdown content={content} />
             : <div className="text-[14px] text-slate-500">{emptyLabel}</div>}

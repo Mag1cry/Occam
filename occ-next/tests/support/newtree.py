@@ -206,18 +206,22 @@ def write_tree(root: Path) -> Path:
 
 
 def application(tmp_path: Path, *, approve: bool = True,
-                web_dir: Path | None = None) -> Application:
+                web_dir: Path | None = None,
+                allowed_origins: tuple[str, ...] = ()) -> Application:
     """装配起一整个系统，跑在 `tmp_path` 里。**测试用的那个"干净的例子"。**
 
     `web_dir` 是给"发布形态"用的（前端构建产物挂到 `/`）。默认 `None` = 开发形态：
     一棵多余的路由都不多。
+
+    `allowed_origins` 同理：默认空 = 一条 CORS 头都不加。要测跨域的显式传。
     """
     workspace = tmp_path / "workspace"
     workspace.mkdir(exist_ok=True)
     (workspace / "hello.txt").write_text("你好", encoding="utf-8")
     extensions = write_tree(tmp_path)
     settings = Settings(root=tmp_path, database=tmp_path / "data" / "control.sqlite",
-                        workspace=workspace, extensions=extensions, web_dir=web_dir)
+                        workspace=workspace, extensions=extensions, web_dir=web_dir,
+                        allowed_origins=allowed_origins)
     if approve:
         # 那条要人批的供给改成不用批——**大多数测试关心的是别的**，
         # 要测审批的自己把这一格改回去（`approval_required` 就在声明里）。

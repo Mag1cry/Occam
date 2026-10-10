@@ -45,6 +45,7 @@ from ..extensions import manifest as manifest_module
 from ..extensions.hotload import HotLoader
 from ..extensions.loader import Loaded
 from ..extensions.writer import Declarations
+from ..gateway.access.pairing import PairingDesk
 from ..gateway.access.policy import load_or_create_token
 from ..gateway.audit import AuditLog
 from ..gateway.directory import Registry
@@ -232,6 +233,8 @@ def build(root: str | Path | None = None, *, settings: Settings | None = None,
 
     stop = threading.Event()
     token = load_or_create_token(settings.access_token)
+    # 设备配对：待批队列在内存里，已接入的台账落 `data/access-devices.json`
+    pairing = PairingDesk(settings.access_devices)
     app = create_app(facade=facade, kernel=kernel, registry=registry, audit=audit,
                      dispatches=scheduler.log, workers=controller.open_workers,
                      last_tool_result=controller.last_tool_result,
@@ -243,7 +246,10 @@ def build(root: str | Path | None = None, *, settings: Settings | None = None,
                      save_task_input=lambda name, text: inputs.save(
                          name, text, root=settings.workspace),
                      # 设了才挂——开发时界面归 vite dev（见 `Settings.web_dir`）
-                     web_dir=str(settings.web_dir or ""), stop=stop)
+                     web_dir=str(settings.web_dir or ""),
+                     # 同上：清单空着就一条 CORS 头都不加（见 `Settings.allowed_origins`）
+                     allowed_origins=settings.allowed_origins,
+                     pairing=pairing, stop=stop)
 
     application = Application(
         settings=settings, store=store, kernel=kernel, registry=registry, supplies=supplies,

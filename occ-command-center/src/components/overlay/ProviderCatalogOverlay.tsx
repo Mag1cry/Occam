@@ -15,6 +15,7 @@ import { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { GlassPanel } from '../ui/GlassPanel';
 import { Badge } from '../ui/Badge';
+import { useScrollFade } from '../../hooks/useScrollFade';
 
 export interface ProviderCatalogOverlayProps {
   catalog: {
@@ -36,6 +37,9 @@ export function ProviderCatalogOverlay({
   referencedBy = 0,
   onClose,
 }: ProviderCatalogOverlayProps) {
+  /** 正文限高，长内容会被切——切了要看得出来 */
+  const [正文滚动ref, 正文滚动类] = useScrollFade<HTMLDivElement>();
+
   const [query, setQuery] = useState('');
 
   const found = useMemo(() => {
@@ -50,8 +54,8 @@ export function ProviderCatalogOverlay({
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50">
-      <GlassPanel variant="strong" className="w-[420px] p-5 flex flex-col max-h-[70vh]">
-        <div className="flex items-start justify-between mb-3">
+      <GlassPanel variant="strong" className="w-[min(420px,92vw)] p-5 flex flex-col max-h-[85vh]">
+        <div className="flex items-start justify-between mb-3 shrink-0">
           <div>
             <div className="text-base font-medium text-white">{catalog.name}</div>
             <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
@@ -84,7 +88,12 @@ export function ProviderCatalogOverlay({
           />
         )}
 
-        <div className="mt-3 overflow-auto" data-provider-catalog>
+        {/*
+          `min-h-0 flex-1` 不能少：缺了它，这个 `overflow-auto` **一次都不会生效**——
+          flex 子项的默认 `min-height: auto` 让它撑到内容那么高，于是整块面板溢出视口，
+          列表底部永远够不着。`MarkdownOverlay` 那边早就踩过同一个坑。
+        */}
+        <div ref={正文滚动ref} className={`mt-3 min-h-0 flex-1 overflow-auto ${正文滚动类}`} data-provider-catalog>
           {found.length === 0 ? (
             <div className="text-[12px] text-slate-500">
               {catalog.models.length === 0 ? '这家还没有模型目录' : '没有匹配的模型'}
@@ -106,7 +115,7 @@ export function ProviderCatalogOverlay({
           )}
         </div>
 
-        <p className="mt-3 text-[11px] text-gray-500 leading-relaxed">
+        <p className="mt-3 shrink-0 text-[11px] text-gray-500 leading-relaxed">
           模型属于供应商（`extensions/_providers/{catalog.name}.yaml` 的 `models:`），
           不属于任何执行者。要用哪一个，是在智能体上说的。
         </p>

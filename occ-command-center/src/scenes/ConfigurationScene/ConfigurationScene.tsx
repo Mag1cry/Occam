@@ -27,7 +27,11 @@ import { AgentEditorOverlay } from '../../components/overlay/AgentEditorOverlay'
 import { WorldContextMenu } from '../../components/overlay/WorldContextMenu';
 import { ToolPermissionOverlay } from '../../components/overlay/ToolPermissionOverlay';
 import { ProviderCatalogOverlay } from '../../components/overlay/ProviderCatalogOverlay';
+import { ConnectionPanel } from '../../components/overlay/ConnectionPanel';
 import { configColumns, diagnosticColumn } from '../../lib/nodeVisual';
+import { bottomPanelClass } from '../../lib/overlayLayout';
+import { useScrollFade } from '../../hooks/useScrollFade';
+import { useWideViewport } from '../../hooks/useViewportFlags';
 import type { Command } from '../../core/types/projection';
 import type { ResourceNode as ResourceNodeModel } from '../../core/types/node';
 
@@ -65,6 +69,13 @@ export interface ConfigurationSceneProps {
 
 export function ConfigurationScene({ configurationId, snapshot }: ConfigurationSceneProps) {
   const { selectedNodeId, setSelected, toggleSelected } = useSelectionStore();
+  /** 引用列表限高 220px，引用多的时候会被切——切了要看得出来 */
+  const [引用滚动ref, 引用滚动类] = useScrollFade<HTMLDivElement>();
+  /** 「连接」那块也会长（待批 + 已接入都列出来），同样要给滚动提示 */
+  const [连接滚动ref, 连接滚动类] = useScrollFade<HTMLDivElement>();
+  /* 和编排台那份同一条规矩：**没选中就贴底**，操作牌伸过来时才让位 */
+  const 宽屏 = useWideViewport();
+  const 面板位置 = bottomPanelClass(selectedNodeId !== null, 宽屏);
   // 转场期间冻结画布输入；本场景不发起进入，只读飞行标记
   const isFlying = useTransitionStore((state) => state.flying);
   const load = useGatewayStore((state) => state.load);
@@ -109,11 +120,14 @@ export function ConfigurationScene({ configurationId, snapshot }: ConfigurationS
     (n): n is ResourceNodeModel => n.type === 'resource' && n.id === selectedNodeId
   ) ?? null;
   /**
-   * 左上角下面那块卡说的是**你点中的那一个**；**没点就不显示**
+   * 左上角那块卡说的是**你点中的那一个**；**没点就换成配置舱总览**
    *
    * 它以前回落到"带引用进来的那一格"，再回落到画布上的第一格——于是那一格看起来
    * 像是被选中了，而用户根本没碰过它。**没选中任何东西的时候，那块卡无论说什么
    * 都是替用户挑了一个**，而那正是它不该做的事。
+   *
+   * 所以没点中的时候它换成总览：说的是"这一屏有什么"，**一个字也不提某一格**。
+   * 两种情况仍然是同一件事的两面——"我在看什么"——所以才是二选一，不是两块并存。
    *
    * （从外部带着引用进来时，那个引用仍然会被展开、在画布上看得见——那是
    * "它在场上"，不是"它被选中了"。）
@@ -268,40 +282,19 @@ export function ConfigurationScene({ configurationId, snapshot }: ConfigurationS
       {/*
         概览：贴在左上角返回锚点下方；顶部中央留给 HUD。
 
-        **两块卡片，不是一块**：
-        - 上面那块是**这一屏有多少东西**（谁都不点也在）；
-        - 下面那块是**你正看着的那一个**（点名、位置、意图、观测、诊断）。
+        **两块卡一次只出现一块**，按"你现在问的是哪个问题"切：
+        - 什么都没点 → **这一屏有多少东西**（智能体 / 供应商 / Executor / …）；
+        - 点中了一格 → **你正看着的那一个**（点名、位置、意图、观测、诊断）。
 
-        混在一张卡上的时候，"总共几个"和"这一个怎么了"是同一个字号、同一个间距，
-        扫一眼分不出哪几行是在说全场景、哪几行是在说手上这一格。
+        它以前是两块**叠着**的：上面那块永远在，下面那块选中才出现。叠着的问题不是
+        "信息多"，是**同时在说两件事**——"总共几个"和"这一个怎么了"字号一样、间距一样，
+        扫一眼分不出哪几行在说全场景、哪几行在说手上这一格。而这两件事，你一次只问一件。
+
+        所以这里是三元，不是两个并列的 `&&`：「只有一块」是这条规则的**内容**，
+        让它长在结构上，下一次改动才不容易顺手又加回第三块。
       */}
       <SceneOverlayStack>
-        <SceneFacts
-          title="配置舱"
-          facts={[
-            // 供应商和配置都给总数：收起时画布上只有几格，但目录实际有多少项
-            // 是后端的事实，不能因为没展开就不说
-            { label: '智能体', value: `${model.agents.length} 个` },
-            { label: '供应商', value: `${model.providers.length} 项` },
-            // **智能体那条不算在这里**（它在上一行的智能体里）：一个单位只报一次数，
-            // 两处都报就是把同一个东西数了两遍
-            { label: 'Executor', value: `${model.executorConfigurations.length} 项` },
-            /*
-              **Ability 数的是"提供能力的单位"**（后端 `registry.capabilities`：
-              一条 `tools:` 声明就是一台供给），**不是包数**——只声明执行者的包不算，
-              它是执行者实现或者智能体。实测那三个包里两个是这样，所以这一格是 1，
-              不是 3；也不是画布上的节点数。
-            */
-            { label: 'Ability', value: `${snapshot.abilities.length} 项` },
-            { label: 'Capability', value: `${model.capabilities.length} 项` },
-          ]}
-        />
-
-        {/*
-          下面那块：**只有选中了才出现**。点空白处取消选中，它就跟着收掉——
-          「这一格现在是什么样」这个问题只有在"正在看某一格"的时候才有对象。
-        */}
-        {panelNode && (
+        {panelNode ? (
           <SceneFacts
             title={panelNode.label}
             facts={[
@@ -339,6 +332,27 @@ export function ConfigurationScene({ configurationId, snapshot }: ConfigurationS
               ...(focusedDiagnostic ? [{ ...focusedDiagnostic, wrap: true }] : []),
             ]}
           />
+        ) : (
+          <SceneFacts
+            title="配置舱"
+            facts={[
+              // 供应商和配置都给总数：收起时画布上只有几格，但目录实际有多少项
+              // 是后端的事实，不能因为没展开就不说
+              { label: '智能体', value: `${model.agents.length} 个` },
+              { label: '供应商', value: `${model.providers.length} 项` },
+              // **智能体那条不算在这里**（它在上一行的智能体里）：一个单位只报一次数，
+              // 两处都报就是把同一个东西数了两遍
+              { label: 'Executor', value: `${model.executorConfigurations.length} 项` },
+              /*
+                **Ability 数的是"提供能力的单位"**（后端 `registry.capabilities`：
+                一条 `tools:` 声明就是一台供给），**不是包数**——只声明执行者的包不算，
+                它是执行者实现或者智能体。实测那三个包里两个是这样，所以这一格是 1，
+                不是 3；也不是画布上的节点数。
+              */
+              { label: 'Ability', value: `${snapshot.abilities.length} 项` },
+              { label: 'Capability', value: `${model.capabilities.length} 项` },
+            ]}
+          />
         )}
       </SceneOverlayStack>
 
@@ -349,7 +363,37 @@ export function ConfigurationScene({ configurationId, snapshot }: ConfigurationS
         Capability 就压在左下角——实测被面板盖掉 1263px²。右下的空位
         在四个场景里都是空的（`scripts/scenes/overlap.mjs` 量得到）。
       */}
-      <div className="fixed bottom-24 right-5 z-30">
+      {/*
+        「连接」：**谁能连上这台机器**。
+
+        放左下是因为配置舱的左下是空的（那份引用列表原本在这儿，因为量出它压住了
+        Capability 才挪到右下 —— 见上面那段）。和别处的侧面板共用同一条位置规则：
+        平时贴底，操作牌会伸过来时才让位。
+      */}
+      <div
+        ref={连接滚动ref}
+        className={`fixed left-5 z-30 w-[min(280px,calc(100vw-2.5rem))] max-h-[46vh] overflow-auto ${面板位置} ${连接滚动类}`}
+      >
+        <ConnectionPanel />
+      </div>
+
+      {/*
+        `bottom` 用常量不用 `bottom-24`：96px 比操作牌的顶边（离底约 102）还低 6px，
+        而那个数字在两处重复且没有注释——它是估的，不是算的。
+
+        `max-w` 也是必需的：这块没有 `w-`，靠 shrink-to-fit，所以一条长 task id
+        就能把它撑到屏幕外（id 是等宽字，又没有 `truncate`）。
+      */}
+      {/*
+        **窄屏收起。** 底部这条带子放不下两块：400 宽时「连接」（280）和这块
+        （最多 320）加起来 600 > 400，实测重叠 69×74px（`overlap.mjs` 抓的）。
+
+        让位的是这一块，不是「连接」：它是**选中对象的细节**，而手机上栈里那张
+        详情卡已经在说同一件事；「连接」管的是能不能进来，没有替代。
+      */}
+      <div
+        className={`fixed right-5 z-30 max-w-[min(320px,calc(100vw-2.5rem))] hidden md:block ${面板位置}`}
+      >
         <div className="glass rounded-xl p-3">
           <div className="label topline pb-1.5 mb-2">
             引用该配置的真实 Task
@@ -362,9 +406,12 @@ export function ConfigurationScene({ configurationId, snapshot }: ConfigurationS
           ) : (
             // 列表本身可能很长（一天一次的日程会带出几十个子 Task）：
             // 限高滚动，不把画布压掉一整列
-            <div className="space-y-1 max-h-[220px] overflow-auto">
+            <div
+              ref={引用滚动ref}
+              className={`space-y-1 max-h-[220px] overflow-auto ${引用滚动类}`}
+            >
               {model.referencedByTaskIds.map((taskId) => (
-                <div key={taskId} className="num text-[11px] text-slate-300">
+                <div key={taskId} className="num text-[11px] text-slate-300 truncate">
                   {taskId}
                 </div>
               ))}

@@ -113,9 +113,17 @@ export function CommandSurface({
 
   return (
     <>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[720px]">
+      {/*
+        **居中必须走全宽容器，不能走 `left-1/2 -translate-x-1/2`。**
+        绝对定位元素在 left 有值、right 为 auto、width 为 auto 时按 shrink-to-fit 算，
+        可用宽度 = 包含块 − left = **视口的一半**——所以那个 `max-w-[720px]` 在
+        1440px 以下的视口里**一次都没生效过**，真正卡住它的是 50vw。
+        手机（800 宽）上就是被卡在 400px，而操作牌本身要 380–520px，于是按钮换行。
+        `FloatingHud` 修的是同一个病，两边写法保持一致。
+      */}
+      <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-3 pointer-events-none">
         <div
-          className="rounded-2xl p-2.5 border"
+          className="pointer-events-auto max-w-[720px] rounded-2xl p-2.5 border"
           style={{
             borderColor: 'rgba(45,212,167,0.32)',
             background: 'linear-gradient(160deg, rgba(8,18,24,0.96), rgba(7,10,14,0.94))',

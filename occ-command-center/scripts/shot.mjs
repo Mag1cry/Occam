@@ -149,9 +149,35 @@ function createPage(client, defaultOut) {
     }
   };
 
+  /**
+   * 拖一把：按下、分几步移动、松开
+   *
+   * **为什么要分步**：一次 `mouseMoved` 跳到位，画布那种"按位移增量平移"的实现
+   * 只会看到一跳；分几步才像真的拖。React Flow 的 `panOnDrag` 就是按位移平移的。
+   */
+  const drag = async (fromX, fromY, toX, toY, steps = 12) => {
+    await client.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed', x: fromX, y: fromY, button: 'left', buttons: 1, clickCount: 1,
+    });
+    for (let i = 1; i <= steps; i += 1) {
+      await client.send('Input.dispatchMouseEvent', {
+        type: 'mouseMoved',
+        x: Math.round(fromX + ((toX - fromX) * i) / steps),
+        y: Math.round(fromY + ((toY - fromY) * i) / steps),
+        button: 'left',
+        buttons: 1,
+      });
+      await sleep(12);
+    }
+    await client.send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased', x: toX, y: toY, button: 'left', buttons: 0, clickCount: 1,
+    });
+  };
+
   return {
     sleep,
     box,
+    drag,
     async eval(expression) {
       const result = await client.send('Runtime.evaluate', {
         expression,

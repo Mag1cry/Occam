@@ -116,35 +116,47 @@ describe('配置舱的一级节点', () => {
   });
 });
 
-describe('左上角那两块卡片', () => {
-  it('上面说这一屏有多少，下面说你正看着的那一个', () => {
+describe('左上角那块卡片', () => {
+  it('没选中说这一屏有多少，选中了说你正看着的那一个', () => {
     /*
-      混在一张卡上的时候，"总共几个"和"这一个怎么了"是同一个字号、同一个间距，
-      扫一眼分不出哪几行在说全场景、哪几行在说手上这一格。
+      **两块卡一次只出现一块。** 它以前是两块叠着的：上面永远在、下面选中才出现。
+
+      叠着的问题不是"信息多"，是**同时在说两件事**——"总共几个"和"这一个怎么了"
+      字号一样、间距一样，扫一眼分不出哪几行在说全场景、哪几行在说手上这一格。
+      而这两件事，你一次只问一件。
+
+      所以钉的是**切换**，不是"多一块少一块"：任何时候都只有一块，
+      变的只是它说的是哪件事。认它靠标题——从"配置舱"换成那一格自己的名字。
     */
     render(<ConfigurationScene configurationId="" snapshot={SNAPSHOT} />);
 
     const cards = () => document.querySelectorAll('[data-scene-overlay-stack] > div');
+    const 标题 = () =>
+      document.querySelector('[data-scene-overlay-stack] > div .topline')?.textContent?.trim();
 
-    // **没选中就没下面那块。** 没点任何东西的时候它无论说什么都是替用户挑了一个
+    // **没选中就是总览**：说这一屏有多少，一个字也不提某一格。
+    // 没点任何东西的时候它无论说什么都是替用户挑了一个
     //（它以前回落到画布上的第一格，于是那格看起来像是被选中了，而用户没碰过它）
     expect(cards().length).toBe(1);
+    expect(标题()).toBe('配置舱');
     const overview = cards()[0].textContent ?? '';
     expect(overview).toContain('智能体');
     expect(overview).toContain('供应商');
     expect(overview).not.toContain('意图');
 
-    // 点一个包：下面那块才出现，说你正看着的那一个（连"在哪份文件里"一起报）
+    // 点一个包：**还是只有一块**，换成说你正看着的那一个（连"在哪份文件里"一起报）
     act(() => { tapNode('ext-001'); });
-    expect(cards().length).toBe(2);
-    const detail = cards()[1].textContent ?? '';
+    expect(cards().length).toBe(1);
+    expect(标题()).not.toBe('配置舱');
+    const detail = cards()[0].textContent ?? '';
     expect(detail).toContain('ext-001');
     expect(detail).toContain('ext-001/manifest.yaml');
     expect(detail).toContain('意图');
 
-    // 点空白：它跟着收掉
+    // 点空白：换回总览——不是"收掉"，是"换回去"
     act(() => { useSelectionStore.setState({ selectedNodeId: null }); });
     expect(cards().length).toBe(1);
+    expect(标题()).toBe('配置舱');
   });
 });
 
@@ -166,10 +178,10 @@ describe('条目卡只说名字', () => {
     // **名字只印一遍**：以前 label 和 summary 是同一个词，一行说两遍
     expect(card('config-001').split('config-001')).toHaveLength(2);
 
-    // 点它：左上角那块卡把它的状态说全
+    // 点它：左上角那块卡把它的状态说全（**下标是 0**——选中时总览让位，只剩这一块）
     act(() => { tapNode('config-001'); });
     const detail =
-      document.querySelectorAll('[data-scene-overlay-stack] > div')[1].textContent ?? '';
+      document.querySelectorAll('[data-scene-overlay-stack] > div')[0].textContent ?? '';
     expect(detail).toContain('执行者');
     expect(detail).toContain('意图');
     expect(detail).toContain('已启用');

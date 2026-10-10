@@ -19,7 +19,13 @@ import { createPortal } from 'react-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useTransitionStore } from '../../store/transitionStore';
 
-/** 与 flip.ts 中的 ANCHOR_SIZE 保持一致 */
+/**
+ * 目标矩形没量到尺寸时的兜底
+ *
+ * 取宽屏那档的锚点尺寸（`flip.ts` 的 `ANCHOR_SIZE`）。**只是兜底**——
+ * 真正在用的值是 `flip.ts` 的 `anchorRectFor()` 给出的那一档，
+ * 窄屏会是 48×36，这里写死的话就永远跟不上。
+ */
 const FALLBACK_SIZE = { width: 208, height: 56 };
 
 export function TransitionLayer() {

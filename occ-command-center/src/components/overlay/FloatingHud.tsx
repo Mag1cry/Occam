@@ -18,6 +18,7 @@ import { Bell, ChevronDown, ChevronUp, Clock, Crosshair, TriangleAlert } from 'l
 import { useSceneStore } from '../../store/sceneStore';
 import { projectWorldScene } from '../../core/projection/WorldProjection';
 import { useGatewayStore, isSnapshotLive } from '../../store/gatewayStore';
+import { useAnchorRect } from '../../hooks/useViewportFlags';
 
 /**
  * 连接状态：HUD 上唯一一处显示「现在数据可不可信」的地方
@@ -46,6 +47,8 @@ function offlineLabel(lastReadyAt: string | null): string {
 const SAFE_TOP = 20;
 const DEFAULT_TOP = 20;
 const COLLAPSED_HEIGHT = 38;
+/** 胶囊和左上角锚点之间至少留这么宽，免得贴着 */
+const ANCHOR_GAP = 8;
 
 const SCENE_LABEL: Record<string, string> = {
   world: '全局',
@@ -56,6 +59,7 @@ const SCENE_LABEL: Record<string, string> = {
 };
 
 export function FloatingHud() {
+  const anchor = useAnchorRect();
   const { currentScene, stack } = useSceneStore();
   const snapshot = useGatewayStore((state) => state.snapshot);
   const status = useGatewayStore((state) => state.status);
@@ -130,30 +134,49 @@ export function FloatingHud() {
   };
 
   return (
+    /*
+      **定位必须走全宽居中，不能走 `left-1/2 -translate-x-1/2`。**
+      绝对定位元素在 left 有值、right 为 auto、width 为 auto 时按 shrink-to-fit 算，
+      而可用宽度 = 包含块 − left = **视口的一半**。于是这个胶囊最多只有半屏宽：
+      桌面窗口宽时看不出来，手机上就装不下——文字竖着折行，而高度是锁死的 42px，
+      于是溢出胶囊（真机实测：800×360 下上限 400px，断开时内容要 494px）。
+
+      外层撑满、`justify-center` 居中，可用宽度就回到整屏；`pointer-events-none`
+      只为了让这条横贯全屏的带子不挡住画布——能点的只有胶囊自己。
+
+      **左右各留出左上角锚点占的那一列。** 不留的话，手机上胶囊（552px）和锚点牌
+      （208px）会撞上——实测重叠 104px，被盖住的正是时钟那一段。留白取
+      `锚点左缘 + 锚点宽 + 间隙`，两边**对称**，所以胶囊仍然在屏幕正中，
+      只是再也不会压到锚点。窄屏锚点收成图标后这里是 76px，宽屏是 236px。
+    */
     <div
-      className="fixed left-1/2 -translate-x-1/2 z-50"
-      style={{ top }}
-      onPointerDown={onPointerDown}
+      className="fixed inset-x-0 z-50 flex justify-center pointer-events-none"
+      style={{ top, paddingInline: anchor.x + anchor.width + ANCHOR_GAP }}
     >
       <div
-        className="topline flex items-center gap-3 pl-3 pr-2 rounded-xl border border-white/10 bg-black/45 backdrop-blur-xl cursor-grab active:cursor-grabbing"
+        className="topline pointer-events-auto flex items-center gap-3 pl-3 pr-2 rounded-xl border border-white/10 bg-black/45 backdrop-blur-xl cursor-grab active:cursor-grabbing whitespace-nowrap max-w-full"
         style={{ height: collapsed ? COLLAPSED_HEIGHT : 42 }}
+        onPointerDown={onPointerDown}
       >
         {/* 身份印记：occ-web 顶栏同一读法 */}
         <span className="w-6 h-6 rounded-lg bg-occ-accent/[0.12] border border-occ-accent/30 flex items-center justify-center shrink-0">
           <Crosshair size={12} className="text-occ-accent" />
         </span>
 
-        {/* 时间与连接状态 */}
-        <span className="num text-[11px] text-slate-400 flex items-center gap-1.5">
+        {/* 时间和连接状态。
+            时间在窄屏收起：手机状态栏本来就显示时间，胶囊里再占 78px 是纯浪费。 */}
+        <span className="num text-[11px] text-slate-400 hidden sm:flex items-center gap-1.5 shrink-0">
           <Clock className="w-3 h-3 text-slate-500" />
           {now.toLocaleTimeString()}
         </span>
 
-        {/* 连接状态：读真实快照状态，不写死「在线」 */}
-        <span className={`flex items-center gap-1.5 text-[11px] ${connection.className}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${connection.dot}`} />
-          {connection.label}
+        {/* 连接状态：读真实快照状态，不写死「在线」。
+            宽屏 `shrink-0`——它是这一屏最该说清楚的一句话，宁可挤掉别的也不压缩它；
+            手机竖屏那种窄到放不下的地方才允许截断（`max-sm:`），
+            这样胶囊**总能压到刚好放得下**，不用横向滚动，也不用裁掉 `.topline` 那道辉光。 */}
+        <span className={`flex items-center gap-1.5 text-[11px] shrink-0 max-sm:shrink max-sm:min-w-0 ${connection.className}`}>
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${connection.dot}`} />
+          <span className="truncate">{connection.label}</span>
         </span>
 
         {!collapsed && (
@@ -162,18 +185,21 @@ export function FloatingHud() {
             和冻住的「实时」是同一种假话——数字看着是新的，其实停在断开那一刻。
           */
           <div className={`contents ${live ? '' : 'opacity-40'}`}>
-            <div className="w-px h-4 bg-white/10" />
+            <div className="w-px h-4 bg-white/10 shrink-0" />
 
             {/* 待拍板：需要你响应 → 琥珀色胶囊 */}
             <span
-              className={`flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg border ${
+              title="待拍板"
+              className={`flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg border shrink-0 ${
                 (summary?.needsDecisionCount ?? 0) > 0
                   ? 'border-occ-warn/40 bg-occ-warn/10 text-occ-warn'
                   : 'border-white/10 bg-white/[0.03] text-slate-400'
               }`}
             >
               <Bell size={11} />
-              待拍板
+              {/* 竖屏手机（<640）上只剩图标和数字：那档宽度里，两颗胶囊的文字
+                  就占掉 67px，而外面还得留锚点那一列——留数字比留词要紧 */}
+              <span className="hidden sm:inline">待拍板</span>
               <span
                 className={`num min-w-[16px] h-4 px-1 rounded-full text-[10px] flex items-center justify-center ${
                   (summary?.needsDecisionCount ?? 0) > 0
@@ -187,14 +213,15 @@ export function FloatingHud() {
 
             {/* 亮灯：需要你注意 → 品红胶囊 */}
             <span
-              className={`flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg border ${
+              title="亮灯"
+              className={`flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg border shrink-0 ${
                 (summary?.attentionCount ?? 0) > 0
                   ? 'border-occ-crit/40 bg-occ-crit/10 text-occ-crit'
                   : 'border-white/10 bg-white/[0.03] text-slate-400'
               }`}
             >
               <TriangleAlert size={11} />
-              亮灯
+              <span className="hidden sm:inline">亮灯</span>
               <span
                 className={`num min-w-[16px] h-4 px-1 rounded-full text-[10px] flex items-center justify-center ${
                   (summary?.attentionCount ?? 0) > 0
@@ -212,12 +239,16 @@ export function FloatingHud() {
           <>
             {/* 当前焦点：来自场景栈，是本地 UI 事实不是快照，所以不跟着压暗 */}
             {focusLabel && (
-              <>
-                <div className="w-px h-4 bg-white/10" />
+              /*
+                窄屏收起。左上角那块锚点牌已经在说同一件事（场景名 + 对象名），
+                而这是胶囊里最占地方的一条——装不下的时候它第一个让位。
+              */
+              <span className="hidden md:flex items-center gap-3 min-w-0">
+                <span className="w-px h-4 bg-white/10 shrink-0" />
                 <span className="text-[11px] text-slate-300 max-w-[220px] truncate">
                   {focusLabel}
                 </span>
-              </>
+              </span>
             )}
           </>
         )}

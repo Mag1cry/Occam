@@ -77,10 +77,12 @@ $env:OCC_NEXT_WEB_DIR = "../occ-command-center/dist"
 uv run python -m src.serve                              # → http://127.0.0.1:8765/
 ```
 
-The backend sends **no CORS headers on purpose** (the UI must be same-origin with
-`/api`), which is why the release shape serves the built frontend from the same
-process instead of pairing it with a reverse proxy. `OCC_NEXT_WEB_DIR` unset means
-nothing is mounted — that is the dev shape, and `/` is then a plain 404.
+The backend sends **no CORS headers** unless you name an origin (the UI is expected
+to be same-origin with `/api`), which is why the release shape serves the built
+frontend from the same process instead of pairing it with a reverse proxy.
+`OCC_NEXT_WEB_DIR` unset means nothing is mounted — that is the dev shape, and `/`
+is then a plain 404. A UI served from *elsewhere* needs `OCC_NEXT_ALLOWED_ORIGINS`
+(see "Serving beyond this machine").
 
 **Releasing means replacing the code, never the data.** The three things that are
 yours live outside it: `data/*.sqlite` (kernel, launch log, dispatch log, gateway
@@ -134,15 +136,32 @@ uv run uvicorn --factory src.serve:make_app --host 0.0.0.0 --no-proxy-headers
   reused after; the directory is git-ignored). Set `OCC_ACCESS_TOKEN` to
   override it — useful where writing secrets to disk is not an option. **Read it
   on this machine**: that is what "local authentication" means.
-- Credentials travel as HTTP Basic (username ignored, password = the token), so
-  a browser prompts once and then attaches them to every request — including
-  the SSE stream, which cannot carry custom headers. Verified against a real
-  browser rather than assumed.
+- Credentials travel as **`Authorization: Bearer <token>`**, or as `?token=` on
+  the SSE stream, which cannot carry custom headers. **There is no HTTP Basic
+  support** — a browser will not prompt for a `Bearer` challenge, so a remote
+  client has to hold the token itself rather than lean on the browser.
 - `OCC_TRUSTED_NETWORKS` narrows what counts as "LAN" (comma-separated CIDRs,
   default loopback + RFC1918 + link-local). Narrowing it to `127.0.0.1/32` is
   the way to exercise the external path from this machine.
-- No CORS: nothing is added, so there is no `*`. The frontend must be served
-  from the same origin as `/api`.
+- **CORS: nothing is added by default, so there is no `*`.** A UI served from
+  the same origin as `/api` needs nothing. A UI served from *elsewhere* — an
+  Android build, where the WebView serves the bundle from `https://localhost` —
+  names its origin explicitly:
+
+  ```powershell
+  $env:OCC_NEXT_ALLOWED_ORIGINS = 'https://localhost'     # 逗号分隔，逐字比对
+  ```
+
+  Entries must be bare origins (scheme + host + optional port, lowercase, no
+  path); anything else raises at startup and names the offending entry, because
+  a typo'd list is fail-closed but shows up as an opaque browser CORS error.
+  The allowance is scoped to `/api/` and performs **no permission check** — an
+  unauthenticated request is still 401, and an unknown path is still 404.
+
+  **Do not reach for `*` here.** The LAN is trusted by source address with no
+  credential, so a wildcard would let any web page the user visits drive
+  `POST /api/command` as a trusted caller — and `mcp.register` hands its payload
+  to `Popen`.
 
 The checked-in `extensions/_providers/deepseek.yaml` and
 `extensions/_providers/uniapi.yaml` contain non-secret model catalogues; set

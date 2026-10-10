@@ -38,6 +38,7 @@ import { BackendCapabilityNotice } from '../../components/overlay/BackendCapabil
 import { useTransitionStore } from '../../store/transitionStore';
 import { useGatewayStore } from '../../store/gatewayStore';
 import { executorCatalog } from '../../core/projection/executorCatalog';
+import { useScrollFade } from '../../hooks/useScrollFade';
 import { executeTaskCommand } from '../../lib/objectCommands';
 import {
   getAgentAudit,
@@ -155,6 +156,8 @@ export function TaskScene({ taskId, snapshot }: TaskSceneProps) {
 
   /** 操作牌上按下的那条只读命令的 id。`null` 表示没有浮窗开着 */
   const [openView, setOpenView] = useState<string | null>(null);
+  /** 执行结果限高 132px，长的结果会被切——切了要看得出来 */
+  const [结果滚动ref, 结果滚动类] = useScrollFade<HTMLDivElement>();
 
   if (!model.task) {
     return (
@@ -278,9 +281,10 @@ export function TaskScene({ taskId, snapshot }: TaskSceneProps) {
               )}
             </div>
             <div
+              ref={结果滚动ref}
               className={`mt-1 max-h-[132px] overflow-auto text-[12px] text-slate-200 ${
                 result.structured ? 'num whitespace-pre' : 'whitespace-pre-wrap'
-              }`}
+              } ${结果滚动类}`}
             >
               {result.text}
             </div>

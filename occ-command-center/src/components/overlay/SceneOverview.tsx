@@ -15,13 +15,35 @@
  */
 
 import type { ReactNode } from 'react';
-import { ANCHOR_POSITION, ANCHOR_SIZE } from '../../lib/flip';
+import { ANCHOR_POSITION } from '../../lib/flip';
+import { BOTTOM_BAND, BOTTOM_PANEL_MIN } from '../../lib/overlayLayout';
+import { useAnchorRect } from '../../hooks/useViewportFlags';
+import { useScrollFade } from '../../hooks/useScrollFade';
 
 /** 锚点下方留出一点间距，避免和锚点边框贴在一起 */
 const STACK_GAP = 10;
 
-/** 概览栈宽度；锚点是 ANCHOR_SIZE.width，这里略宽以便容纳事实文字 */
-const STACK_WIDTH = 236;
+/**
+ * 概览栈宽度：**跟着内容走，上限跟着设备走**
+ *
+ * 写死 236px 的时候，配置舱那张卡实际只需要 110px——**中间 98px 是纯空白**，
+ * 而行是 `justify-between`（标签钉左、值钉右），所以那段空白怎么调宽度都消不掉，
+ * 只有让容器贴住内容才行。
+ *
+ * 三条一起满足：
+ * - `w-max`（max-content）→ 容器等于**最宽那张卡的内容宽**，空白消失；
+ * - 卡片在 `flex-col` 里默认 `stretch` → 两张卡共享这个宽度，**两端都对齐**，
+ *   不会一张宽一张窄；
+ * - `max-w-[min(236px,46vw)]` → 上限跟着设备走：桌面 236，窄屏按比例收，
+ *   免得一条长值（诊断、长 task id）把卡片撑穿。
+ *
+ * 上限在实测里只有极窄时才咬得住：编排台那张卡内容要 179px（`映射` 那一行最长），
+ * 配置舱只要 110px。
+ *
+ * **已知的落差**：上面那块锚点牌固定 208px（它是飞行终点，尺寸写在 `flip.ts` 里，
+ * 不能跟着内容变），所以卡片会比它窄——两块左对齐、右边缘不齐。
+ */
+const STACK_WIDTH_CLASS = 'w-max max-w-[min(236px,46vw)]';
 
 export interface SceneOverlayStackProps {
   children: ReactNode;
@@ -33,15 +55,23 @@ export interface SceneOverlayStackProps {
  * 位置由 ANCHOR_* 常量派生，保证与飞行终点对齐。
  */
 export function SceneOverlayStack({ children }: SceneOverlayStackProps) {
+  const anchor = useAnchorRect();
+  const [scrollref, scroll类] = useScrollFade<HTMLDivElement>();
+  const top = anchor.y + anchor.height + STACK_GAP;
+  /*
+    **封顶，让它永远够不到左下角那个面板。** 矮视口上这是硬约束，不是美观问题：
+    360 高时"锚点 + 栈"和"分区面板 + 底带"加起来要 513px，两样全尺寸摆不下
+    （实测重叠 144px，`weather.daily` 整张卡被压住）。到点就自己滚，
+    而不是压到别人身上。
+  */
+  const maxHeight = `calc(100vh - ${top + BOTTOM_BAND + BOTTOM_PANEL_MIN}px)`;
+
   return (
     <div
       data-scene-overlay-stack
-      className="fixed z-30 flex flex-col gap-2"
-      style={{
-        left: ANCHOR_POSITION.x,
-        top: ANCHOR_POSITION.y + ANCHOR_SIZE.height + STACK_GAP,
-        width: STACK_WIDTH,
-      }}
+      ref={scrollref}
+      className={`fixed z-30 flex flex-col gap-2 overflow-y-auto overflow-x-hidden ${STACK_WIDTH_CLASS} ${scroll类}`}
+      style={{ left: ANCHOR_POSITION.x, top, maxHeight }}
     >
       {children}
     </div>

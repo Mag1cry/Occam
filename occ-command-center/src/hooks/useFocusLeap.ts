@@ -18,11 +18,11 @@ import { useTransitionStore } from '../store/transitionStore';
 import { useSelectionStore } from '../store/selectionStore';
 import type { SceneId } from '../core/types/scene';
 import {
-  ANCHOR_RECT,
   computeNodeScreenRect,
   measureNodeById,
   type Rect,
 } from '../lib/flip';
+import { useAnchorRect } from './useViewportFlags';
 
 /**
  * 现读当前选中
@@ -41,6 +41,12 @@ const FLIGHT_TIMEOUT_MS = 900;
  * 进入子场景
  */
 export function useFocusLeap() {
+  /*
+    飞行终点＝锚点**当前**那一档。窄屏锚点收成图标之后，如果这里还用写死的
+    208×56，每次进出场景都会飞到一个比锚点宽 160px 的框里——而那种错位
+    只在手机上看得出来。所以画面和终点共用 `flip.ts` 的同一个函数。
+  */
+  const anchor = useAnchorRect();
   const { push, pop, stack, currentScene } = useSceneStore();
   const getPosition = useLayoutStore((state) => state.getPosition);
   const getViewport = useLayoutStore((state) => state.getViewport);
@@ -96,14 +102,14 @@ export function useFocusLeap() {
         targetScene,
         focusId: nodeId,
         sourceRect,
-        targetRect: ANCHOR_RECT,
+        targetRect: anchor,
         label,
         color,
         sourceNodeId: nodeId,
         stateText,
       });
     },
-    [stack, push, beginEnter]
+    [stack, push, beginEnter, anchor]
   );
 
   /**
@@ -128,13 +134,13 @@ export function useFocusLeap() {
     })();
 
     beginExit({
-      sourceRect: ANCHOR_RECT,
+      sourceRect: anchor,
       // 进入时测到的矩形优先：返回时源场景视口与进入前一致，节点就在原处
-      targetRect: source?.rect ?? fallbackRect ?? ANCHOR_RECT,
+      targetRect: source?.rect ?? fallbackRect ?? anchor,
       label: source?.label ?? currentFrame.focusId,
       color: source?.color ?? '#2dd4a7',
     });
-  }, [stack, getPosition, getViewport, beginExit]);
+  }, [stack, getPosition, getViewport, beginExit, anchor]);
 
   /**
    * 转场完成后的提交

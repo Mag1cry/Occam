@@ -34,6 +34,7 @@ import {
 } from '../../api/gateway';
 import { activationFailureText } from '../../lib/nodeVisual';
 import { useGatewayStore } from '../../store/gatewayStore';
+import { useScrollFade } from '../../hooks/useScrollFade';
 
 export interface ToolPermissionOverlayProps {
   /** 扩展包目录名：后端按目录去定位 manifest，不是 `extension.<id>` 那个引用 */
@@ -72,6 +73,10 @@ export function ToolPermissionOverlay({
   declarations = [],
   onClose,
 }: ToolPermissionOverlayProps) {
+  /** 正文限高，长内容会被切——切了要看得出来。表单态和"已保存"态各一个滚动区 */
+  const [表单滚动ref, 表单滚动类] = useScrollFade<HTMLDivElement>();
+  const [结果滚动ref, 结果滚动类] = useScrollFade<HTMLDivElement>();
+
   const load = useGatewayStore((state) => state.load);
   const toolId = capability?.tool_id ?? '';
 
@@ -113,8 +118,8 @@ export function ToolPermissionOverlay({
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50">
-      <GlassPanel variant="strong" className="w-[480px] p-5">
-        <div className="flex items-start justify-between mb-4">
+      <GlassPanel variant="strong" className="w-[min(480px,92vw)] max-h-[85vh] p-5 flex flex-col">
+        <div className="flex items-start justify-between mb-4 shrink-0">
           <div>
             <div className="text-base font-medium text-white">编辑权限</div>
             <div className="mt-1 text-xs text-gray-500">
@@ -132,7 +137,7 @@ export function ToolPermissionOverlay({
         </div>
 
         {saved ? (
-          <div className="space-y-2">
+          <div ref={结果滚动ref} className={`space-y-2 min-h-0 flex-1 overflow-auto ${结果滚动类}`}>
             <div className="text-sm text-slate-200">
               已写入 manifest：{toolId} 的 {field}
             </div>
@@ -158,7 +163,7 @@ export function ToolPermissionOverlay({
           </div>
         ) : (
           <>
-            <div className="space-y-3">
+            <div ref={表单滚动ref} className={`space-y-3 min-h-0 flex-1 overflow-auto ${表单滚动类}`}>
               <label className="block">
                 <span className="text-xs text-gray-400">字段</span>
                 <select
@@ -210,7 +215,7 @@ export function ToolPermissionOverlay({
               <div className="mt-3 text-[11px] text-occ-crit-light break-words">{error}</div>
             )}
 
-            <div className="mt-4 flex items-center justify-between">
+            <div className="mt-4 flex items-center justify-between shrink-0">
               <Badge variant="info" size="sm">manifest.set_tool_field</Badge>
               <div className="flex gap-2">
                 <Button variant="secondary" size="sm" onClick={onClose} disabled={submitting}>

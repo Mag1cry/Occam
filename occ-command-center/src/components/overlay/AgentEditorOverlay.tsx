@@ -42,6 +42,7 @@ import { useGatewayStore } from '../../store/gatewayStore';
 import { agentModelGroups, deleteAgent, upsertAgent,
          type GatewayAgent, type GatewaySnapshot } from '../../api/gateway';
 import type { SelectGroup } from '../../lib/selectGroups';
+import { useScrollFade } from '../../hooks/useScrollFade';
 
 export interface AgentEditorOverlayProps {
   /** 编辑哪一份定义：来自快照，不在这里另存一份目录。新建时是 `null` */
@@ -59,6 +60,10 @@ const FIELD_CLASS =
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 export function AgentEditorOverlay({ agent, snapshot, onClose, creating = false }: AgentEditorOverlayProps) {
+  /** 正文限高，长内容会被切——切了要看得出来。编辑表单和工具清单各一个滚动区 */
+  const [表单滚动ref, 表单滚动类] = useScrollFade<HTMLDivElement>();
+  const [清单滚动ref, 清单滚动类] = useScrollFade<HTMLDivElement>();
+
   const load = useGatewayStore((state) => state.load);
 
   // 新建时 `agent_ref` 形如 `agent.<id>`；id 就是包目录名
@@ -227,8 +232,8 @@ export function AgentEditorOverlay({ agent, snapshot, onClose, creating = false 
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50">
-      <GlassPanel variant="strong" className="w-[560px] max-h-[86vh] overflow-auto p-5">
-        <div className="flex items-start justify-between mb-4">
+      <GlassPanel variant="strong" className="w-[min(560px,92vw)] max-h-[85vh] p-5 flex flex-col">
+        <div className="flex items-start justify-between mb-4 shrink-0">
           <div>
             <div className="text-base font-medium text-white">
               {creating ? '新建智能体配置' : '编辑智能体'}
@@ -246,7 +251,7 @@ export function AgentEditorOverlay({ agent, snapshot, onClose, creating = false 
           </button>
         </div>
 
-        <div className="space-y-3">
+        <div ref={表单滚动ref} className={`space-y-3 min-h-0 flex-1 overflow-auto ${表单滚动类}`}>
           {creating && (
             <label className="block">
               <span className="text-xs text-gray-400">
@@ -383,7 +388,7 @@ export function AgentEditorOverlay({ agent, snapshot, onClose, creating = false 
 
           <div className="block">
             <span className="text-xs text-gray-400">扩展包（整包选，不逐个工具）</span>
-            <div className="mt-1 space-y-1 max-h-[140px] overflow-auto rounded border border-white/10 p-2">
+            <div ref={清单滚动ref} className={`mt-1 space-y-1 max-h-[140px] overflow-auto rounded border border-white/10 p-2 ${清单滚动类}`}>
               {packagesWithTools.length === 0 && (
                 <div className="text-[11px] text-gray-500">快照里没有可选的包</div>
               )}
@@ -470,10 +475,10 @@ export function AgentEditorOverlay({ agent, snapshot, onClose, creating = false 
         </div>
 
         {error && (
-          <div className="mt-3 text-[11px] text-occ-crit-light break-words">{error}</div>
+          <div className="mt-3 shrink-0 text-[11px] text-occ-crit-light break-words">{error}</div>
         )}
 
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             {/* 提交的**就是**这两条命令之一：新建是建一份声明，改是重写一栏 */}
             <Badge variant="info" size="sm">

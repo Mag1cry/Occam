@@ -25,7 +25,12 @@ export function BackendCapabilityNotice() {
   if (pending.length === 0) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-30">
+    <div className="fixed bottom-5 right-5 z-30 max-w-[min(360px,calc(100vw-2.5rem))]">
+      {/*
+        这块没有 `w-`，靠 shrink-to-fit——展开后那几行接口路径（等宽的 10px，
+        最长一条 43 个字符）能把它撑到约 360px。窄屏上要给个上限，
+        否则它从屏幕左边漏出去。
+      */}
       <GlassPanel className="px-3 py-2">
         <button
           type="button"

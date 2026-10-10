@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.middleware.cors import CORSMiddleware
 
 from ..core.errors import CommandRejected, Conflict, NotFound, OCCError
 from . import references as references_module
@@ -52,25 +54,118 @@ class WorkspaceFileBody(BaseModel):
     text: str
 
 
+class AccessRequestBody(BaseModel):
+    """请求接入时自己报的名字。**人填的**，用来在设备列表里认出它。"""
+
+    device_name: str = ""
+
+
+class AccessDecisionBody(BaseModel):
+    """批准 / 拒绝 / 吊销都按 id 指认——`request_id` 或 `device_id`，谁在就填谁。"""
+
+    request_id: str = ""
+    device_id: str = ""
+
+
+class _ApiCors(CORSMiddleware):
+    """跨域只对 `/api/` 开口子。**这不是权限检查。**
+
+    ## 为什么它和"权限必须是 router 级依赖"那条不冲突
+
+    `web/README` 那条规矩说的是**权限判断**不能放中间件：中间件跑在路由之前，会把
+    不存在的路径也变成 401，于是"这个接口不存在"和"你没认证"分不开。这里一个权限都不判
+    ——真请求照旧走路由、照旧由 `guard` 这个 router 级依赖判决，所以
+    `GET /api/没有这个` 仍然是 **404**。变的只有响应头。
+
+    ## 为什么要有路径闸门
+
+    不加闸门的话，清单里的源连 `/openapi.json`、`/docs` 和前端产物都能读——那几样在
+    `guard` 之外注册。开了口子的只有接口面，别的什么都不开。
+
+    ## 为什么预检绕不过去，也不需要绕
+
+    预检 `OPTIONS` 打到 GET-only 的路由是 **405**（Starlette 在方法不匹配时就短路了，
+    router 级依赖根本不会跑）；打到不存在的路径是 404。所以"让 `guard` 放行预检"是
+    死代码——中间件在路由之前，正好接住预检，而预检本来就不带凭据。
+    """
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http" or not scope.get("path", "").startswith("/api/"):
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
+
 def create_app(*, facade: Any, kernel: Any, registry: Any, audit: Any,
                token: str = "", dispatches: Any = None, workers: Any = None,
                declarations: Any = None, executor_data: str = "",
                last_tool_result: Any = None,
                extensions_root: str = "", web_dir: str = "",
                save_task_input: Any = None,
+               allowed_origins: tuple[str, ...] = (),
+               pairing: Any = None,
                stop: Any = None, title: str = "OCC") -> FastAPI:
     app = FastAPI(title=title)
+
+    # **设了才挂**（和 `web_dir` 同一个规矩）：清单空着就一个中间件都不加，
+    # 与"从来没有过 CORS"逐字节相同。清单的解析与校验在 `app/settings.py`，
+    # 因为 `web/` 不许 import `app/`（分层测试钉着）。
+    if allowed_origins:
+        app.add_middleware(_ApiCors, allow_origins=list(allowed_origins),
+                           allow_methods=("GET", "POST"),
+                           allow_headers=("Authorization", "Content-Type"),
+                           # **Bearer 不是 CORS 语义里的凭据**（那个头管的是 cookie 和
+                           # 客户端证书）。加上它只会把许可放宽，这里不需要。
+                           allow_credentials=False, max_age=600)
 
     def guard(request: Request) -> Principal:
         caller = Caller(host=request.client.host if request.client else "",
                         token=_presented(request))
-        decision = judge_caller(caller, token=token)
+        # **先查台账**：`judge_caller` 只收一个布尔，它不该知道设备台账长什么样。
+        # 查到了就把主体写成设备名——审计里这才认得出"是哪台设备"，而不是只有一串 IP。
+        device = pairing.verify(caller.token) if pairing is not None else None
+        decision = judge_caller(caller, token=token, paired=device is not None)
         if not decision.allowed:
             raise HTTPException(status_code=401, detail=decision.reason,
                                 headers={"WWW-Authenticate": 'Bearer realm="occ"'})
+        if device is not None:
+            return external(detail=f"device:{device.name}")
         return external(detail=f"{caller.level}@{caller.host}")
 
     router = APIRouter(dependencies=[Depends(guard)])
+
+    #: **免鉴权的那几个**。请求方就是还没进来的人——给它们挂 guard 等于把门锁在门里。
+    #: 所以这几条自己扛限速、短有效期和队列上限（见 `access/pairing.py`）。
+    open_router = APIRouter()
+
+    @open_router.post("/api/access/request")
+    def access_request(body: AccessRequestBody, request: Request) -> dict[str, Any]:
+        """手机请求接入。**没有凭据也能调**——它就是要来拿凭据的。
+
+        回 `{"ok": false}` 时**不说是哪一种拒法**：对一个免鉴权的端点，
+        说得越细越像是在帮人试探限速和队列的边界。
+        """
+        if pairing is None:
+            return {"ok": False}
+        entry = pairing.request(device_name=body.device_name,
+                                host=request.client.host if request.client else "")
+        if entry is None:
+            return {"ok": False}
+        now = time.monotonic()
+        return {"ok": True, **entry.public(now)}
+
+    @open_router.get("/api/access/status")
+    def access_status(request_id: str) -> dict[str, Any]:
+        """手机轮询这一条等批准。
+
+        **为什么是轮询不是 SSE**：`/api/events` 挂在 guard 后面，而待批设备什么凭据都没有。
+        要给它推送就得再开一个免鉴权的 SSE 端点——那是新的一块公网面。而更要紧的是：
+        配对是**引导流程**，它必须在别的什么都不通的时候能工作；把引导建在整个方案里
+        最不确定的那个特性（跨域 SSE）上，方向是反的。
+        """
+        if pairing is None:
+            return {"state": "unknown"}
+        return pairing.result(request_id)
 
     @router.get("/api/state")
     def state() -> dict[str, Any]:
@@ -261,7 +356,57 @@ def create_app(*, facade: Any, kernel: Any, registry: Any, audit: Any,
                      "Connection": "keep-alive"},
         )
 
+    # ── 设备配对：批准端。**这几条要 guard** —— 谁能批准谁就是已经进来的人
+
+    @router.get("/api/access/pending")
+    def access_pending() -> dict[str, Any]:
+        """等着点头的请求。**批准方看到的那一份**。
+
+        请求方拿到的是 `/api/access/status` 那一份（只含它自己那条）；这里是队列全貌。
+        """
+        if pairing is None:
+            return {"pending": []}
+        now = time.monotonic()
+        return {"pending": [entry.public(now) for entry in pairing.pending()]}
+
+    @router.post("/api/access/approve")
+    def access_approve(body: AccessDecisionBody) -> dict[str, Any]:
+        """点头。**凭据在这里生成，但只发给请求方一次**——这条只回设备本身。"""
+        if pairing is None:
+            raise NotFound("设备配对没启用")
+        device = pairing.approve(body.request_id)
+        if device is None:
+            raise NotFound("这条请求不在了（过期、已被处理，或者本来就没有）")
+        return {"ok": True, "device": device.public()}
+
+    @router.post("/api/access/deny")
+    def access_deny(body: AccessDecisionBody) -> dict[str, Any]:
+        if pairing is None:
+            raise NotFound("设备配对没启用")
+        if not pairing.deny(body.request_id):
+            raise NotFound("这条请求不在了")
+        return {"ok": True}
+
+    @router.get("/api/access/devices")
+    def access_devices() -> dict[str, Any]:
+        """已接入的设备。**这是吊销的唯一依据**——所以每一条都要说得清是谁。"""
+        if pairing is None:
+            return {"devices": []}
+        return {"devices": [device.public() for device in pairing.devices()]}
+
+    @router.post("/api/access/revoke")
+    def access_revoke(body: AccessDecisionBody) -> dict[str, Any]:
+        """吊销一台设备。**这台设备手里的凭据下一次请求就失效**——因为它比的是台账。"""
+        if pairing is None:
+            raise NotFound("设备配对没启用")
+        if not pairing.revoke(body.device_id):
+            raise NotFound("没有这台设备")
+        return {"ok": True}
+
     app.include_router(router)
+    # **免鉴权的那两条单独一个 router**：它们不能挂在 guard 后面，否则就是
+    # "把门锁在门里"——来请求接入的人本来就还没有钥匙。
+    app.include_router(open_router)
 
     for error, status in ((NotFound, 404), (Conflict, 409),
                           (CommandRejected, 400), (OCCError, 400),
@@ -277,8 +422,11 @@ def _mount_web(app: FastAPI, web_dir: str) -> None:
 
     ## 为什么是同源、为什么挂在这儿
 
-    后端**一条 CORS 头都不加**（`web/README` 那条："前端必须和 `/api` 同源"），
-    所以两种形态里选一个：反代，或者这里挂。本机单用户 ⇒ 挂在这儿。
+    后端**默认一条 CORS 头都不加**（清单空着时就是这样），所以两种形态里选一个：
+    反代，或者这里挂。本机单用户 ⇒ 挂在这儿。
+
+    想让界面从**别处**加载（Android 打包后 origin 是 `https://localhost`），
+    就得显式给那份清单加一条 `OCC_NEXT_ALLOWED_ORIGINS`——见 `_ApiCors`。
 
     **挂在 API 路由之后**——Starlette 按注册顺序匹配，`/api/*` 先注册就先命中；
     反过来的话 `Mount("/")` 会把所有请求都吃掉，接口全成 404。
