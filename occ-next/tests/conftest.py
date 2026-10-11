@@ -1,6 +1,6 @@
 """测试夹具。
 
-**目录名已经落定了**：源码包就叫 `src`（`python -m src.serve`），所以这里的 import
+**目录名已经落定了**：源码包就叫 `src`（启动命令注册在 `pyproject.toml`，入口是 `src.serve`），所以这里的 import
 是 `from src.…`——那次"把 `src.` 前缀改回去"的最后一步已经做完了，别再留着改回去的
 念头：`pyproject.toml` 的 `module-name = "src"` 只认这一个名字。
 """

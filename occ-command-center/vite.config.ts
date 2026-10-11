@@ -8,7 +8,7 @@ import { defineConfig } from 'vite'
 // 代理过来这一条路。要连别处就设 `VITE_GATEWAY_DEV_URL`。
 //
 // 默认端口是**新后端**的（`src/app/settings.py` 里 `port = 8765`）：
-// 起法 `OCC_NEXT_ROOT=demo uv run python -m src.serve`。
+// 起法 `OCC_NEXT_ROOT=demo uv run occ-next`。
 export default defineConfig({
   plugins: [react()],
   server: {

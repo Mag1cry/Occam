@@ -1,7 +1,9 @@
 # OCC 指挥中心前端
 
-> 基于 `../docs-Next-Version/command-center-design/` 实现：
-> 全屏空间画布 + 悬浮 Overlay，数据来自后端 `occ-next` 的网关快照。
+> Occam 的 React 控制台：全屏空间画布与悬浮 Overlay，数据来自后端 `occ-next` 的网关快照。
+
+当前 LangGraph Agent 由 Occam Worker 托管执行，工具权限由后端网关判决。未来若接入外部 Agent
+只读监控，将作为独立的适配路径，并明确区分观测记录与 Occam 的控制事实。
 
 ## 快速开始
 
@@ -9,7 +11,7 @@
 
 ```bash
 # 1) 后端
-cd ../occ-next && uv run python -m src.serve
+cd ../occ-next && uv run occ-next
 
 # 2) 前端
 npm install
@@ -21,7 +23,7 @@ npm run dev      # http://localhost:5173，/api 代理到 127.0.0.1:8765
 其他命令：
 
 ```bash
-npm run test     # vitest（140 项）
+npm run test     # vitest
 npm run build    # tsc -b && vite build
 npm run lint     # oxlint
 ```
@@ -103,7 +105,7 @@ Schedule Entry、Task Definition、occurrence 都是**资料节点**（`Resource
 
 **操作与反馈**
 
-- 操作牌由对象当前事实生成（`focus-leap.md` 的操作矩阵），
+- 操作牌由对象当前事实生成，
   普通节点不常驻按钮列；
 - 高风险命令（取消、拒绝、批准、启停）一律先进入预览，
   再确认提交；
@@ -127,14 +129,13 @@ Schedule Entry、Task Definition、occurrence 都是**资料节点**（`Resource
 
 Vite + React + TypeScript + React Flow + Framer Motion + Zustand + Tailwind CSS v4。
 
-视觉系统**与 `../occ-web` 同源**：近黑中性面（`#05070a` / `#0f1011` / `#191a1b`）、
+视觉系统采用近黑中性面（`#05070a` / `#0f1011` / `#191a1b`）、
 青色主强调（`#2dd4a7`）、色盲安全的三态色（青 / 琥珀 `#ffb020` / 品红 `#ff5470`）、
 小字号密集排版（11–13px + 等宽数字 + 小标签）、战术网格底衬。
 节点表面按状态派生（`src/lib/nodeSurface.ts`）：状态色淡渐变 + 内高光 +
 柔和投影，需要响应的节点加同色外发光。
 
-字距只给拉丁串：occ-web 的 `.label` 是全大写英文专用，0.2em 套到中文上会把词撑散，
-所以中文标签用不带字距的 `.label`，拉丁串显式加 `.label-en`。
+字距只给拉丁串：中文标签用不带字距的 `.label`，拉丁串显式加 `.label-en`。
 时长用 `src/lib/format.ts` 的紧凑写法（`20min` / `1h 15min`），零秒不显示——
 节点页脚只有 154px 可用，`20m 0s` 放不下。
 
@@ -155,7 +156,7 @@ src/
 │   └── ui/            Button / Badge / Card / GlassPanel
 ├── lib/               状态环、注意力、LOD、命令矩阵、命令提交、FLIP、节点视觉
 ├── mock/              夹具：离线快照构建（snapshot.ts）+ 各对象数据
-├── store/             gateway / scene / selection / layout / transition / prototypeTask
+├── store/             gateway / scene / selection / layout / transition
 └── hooks/             useFocusLeap
 ```
 
@@ -167,11 +168,11 @@ src/
   提交命令，`GET /api/gateway/events`（SSE）只当「有变化」的信号；
 - **拿不到快照就不渲染任何节点**：画布显示「后端不可达 + 重试」状态层，
   HUD 显示「已断开」。`src/mock/` 是夹具，没有任何静默回落；
-- `acknowledge` 与增量游标（Change Feed）仍是目标接口，界面上以禁用状态
+- 失败确认 `acknowledge` 与增量游标（Change Feed）仍是目标接口，界面上以禁用状态
   显示，不用本地状态替代；
-- 「新建任务」仍是原型本地提交，节点带原型标记；
-- Core Event Log 是真实数据；Agent Audit 仍是夹具（后端还没有审计投影接口）；
+- 「新建任务」通过网关提交真实 `create_task` 命令，并从重读快照取得新 Task；
+- Core Event Log 来自真实事件流；Agent Audit 通过 `GET /api/tasks/{id}/agent-audit` 按需读取执行者 adapter，LangGraph 托管执行者提供真实审计投影；
+- 当前 LangGraph 属于 Occam Worker 托管执行。规划中的外部只读监控将读取 Occam 外部运行的 Agent，是另一条集成路径；
 - 已知差距与刻意保留的边界见 [DESIGN.md](./DESIGN.md)。
 
-设计文档位于 `../docs-Next-Version/command-center-design/`，
-实现与设计的对应关系见 [DESIGN.md](./DESIGN.md)。
+当前交互结构、实现边界和已知差距见 [DESIGN.md](./DESIGN.md)。

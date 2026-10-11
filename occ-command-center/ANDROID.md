@@ -141,8 +141,7 @@ const base = import.meta.env.VITE_GATEWAY_URL ?? '';
 3. **按设备签发、可单独吊销**：删 `data/access-devices.json` 里一条即可。
 
 **落地位置**：`gateway/access/`，和 `data/access-token.json` 平级。
-**不进内核、不建第二套权限中心** —— 这是 `docs-Next-Version/architecture-next/peripherals/remote-adapters.md`
-的明文约束。
+**不进内核、不建第二套权限中心**：设备接入属于网关访问控制，与 Task 工具审批分层处理。
 
 **批准界面放哪**：建议**配置舱**（"配置与能力"，"谁能连进来"是配置），
 **不要混进"待拍板"** —— 待拍板是 Task 的语义，设备接入是宿主的事，混在一起会把那条边界糊掉。
@@ -266,7 +265,7 @@ D 壳配置 ／ E 资源   （都是配置）
 
 ### ⚠️ 你那个后端要重启一次
 
-`python -m src.serve` 不带 reload，所以**现在跑着的 8765 还是旧代码**——
+`uv run occ-next` 不带 reload，所以**现在跑着的 8765 还是旧代码**——
 配置舱那块「连接」面板会调 `/api/access/pending` 拿到 404（面板显示错误，
 其余一切正常）。重启之后就对了。
 
@@ -286,7 +285,7 @@ D 壳配置 ／ E 资源   （都是配置）
 # 后端：绑到局域网 + 允许来自 5173 的源
 $env:OCC_NEXT_HOST='0.0.0.0'
 $env:OCC_NEXT_ALLOWED_ORIGINS='http://192.168.0.100:5173'
-cd occ-next ; uv run python -m src.serve
+cd occ-next ; uv run occ-next
 ```
 
 ```bash

@@ -1,22 +1,19 @@
 # 实现说明
 
-> 本文说明原型如何对应 `../docs-Next-Version/command-center-design/` 的设计，
-> 以及在哪些地方刻意保留边界、不做实现。
+> 本文记录当前前端的权威数据来源、交互结构、实现边界与已知差距。
 
 ## 1. 权威来源
 
-设计文档按“产品体验 → 渲染架构 → 投影契约 → 后端事实”分层。
-发生冲突时按该顺序判断：体验目标不能虚构后端事实，后端事实不能反过来
-决定所有视觉表现，专题文档不得覆盖分层契约。
+界面以网关快照与后端命令结果为事实来源；投影与交互只组织和呈现这些事实，
+不推断后端没有提供的状态。
 
-| 层 | 文档 | 在本项目中的落点 |
+| 层 | 模块 | 在本项目中的落点 |
 | --- | --- | --- |
-| 产品体验 | `frontend-experience.md` | `scenes/*`、四级信息密度、操作流程 |
-| 渲染架构 | `rendering-architecture.md` | `core/scene/*`（SceneRenderer / SpatialCanvas / TransitionLayer） |
-| 投影契约 | `projection-contract.md` | `core/projection/*` |
-| 后端契约 | `backend-contract.md` | `api/gateway.ts`（快照与命令）、`lib/commandMatrix.ts` 的能力开关 |
-| 视觉系统 | `visual-system.md` | `components/*`、`index.css` 的 `@theme` |
-| 业务专题 | `world-model.md` / `state-ring.md` / `focus-leap.md` | `lib/attention.ts`、`lib/stateRing.ts` |
+| 场景与操作 | `scenes/*`、`components/overlay/*` | 场景投影与命令入口 |
+| 渲染架构 | `core/scene/*` | SceneRenderer / SpatialCanvas / TransitionLayer |
+| 数据投影 | `core/projection/*` | 各场景的对象与关系 |
+| 后端接口 | `api/gateway.ts` | 快照、命令、事实流、结果与审计读取 |
+| 视觉与状态 | `components/*`、`lib/*`、`index.css` | 节点视觉、注意力与状态环 |
 
 ## 1.1 外层四类节点与子场景资料
 
@@ -38,13 +35,8 @@ Task 场景里没有资料节点：`uses` / `awaits` 以引用摘要呈现（见
 Executor Configuration 在那里不是可选中、可连线的空间对象。
 档案馆也没有资料节点：它的内容是终态 Task 本身。
 
-设计原文：
-
-- `world-model.md` 第 2 节：Executor Configuration、Extension、Capability、
-  Task Definition、occurrence 和 Archive Record **都不是外层第五类节点**，
-  只在对应父节点的 ChildScene 中出现；
-- 第 6 节：Archive **外层只显示档案馆入口，不把历史 Task 铺回 World**；
-  Configuration **外层只显示配置舱入口**。
+场景中的资料对象只放在关联场景，不提升为全局节点；Archive 与 Configuration
+在 World 中各自只保留入口。
 
 因此外层的规模是「快照里的每个非 Schedule Task 一个 Task 节点 +
 每个 Schedule 一个节点 + 1 个档案馆入口 + 1 个配置舱入口」。
@@ -56,7 +48,7 @@ Schedule 的 occurrence 物化出的 Task 归编排台管，不在外层出现
 关于连线：外层没有任何合法关系。设计列出的真实关系
 （`Task→Executor Configuration`、`Extension→Capability`、
 `Schedule→Entry→occurrence→Task`）**两端都在子场景内部**，
-只能在子场景绘制。设计原文是「节点可以没有连线。只有真实关系才画线」——
+只能在子场景绘制。「节点可以没有连线，只有真实关系才画线」——
 把子场景关系提升到全局，既让外层变拥挤，也把不存在的全局关系画成了事实。
 
 资料节点与真实对象的关系只能来自显式 ID 映射
@@ -65,8 +57,7 @@ Schedule 的 occurrence 物化出的 Task 归编排台管，不在外层出现
 
 ### 1.2 世界的全部关系
 
-设计的合法关系是封闭清单，逐条对照如下
-（`world-model.md` 第 4 节 / `projection-contract.md` 第 4 节 / `focus-leap.md` 3.2）：
+设计的合法关系是封闭清单，逐条对照如下：
 
 | # | 关系 | 实现位置 | 说明 |
 | --- | --- | --- | --- |
@@ -108,8 +99,8 @@ occurrence 各是独立节点。早期实现把 Task Definition 折进 Entry 的
 
 #### Schedule 的聚合是派生的
 
-Schedule 不拥有自己的 Core 状态环，它的环是子 Task 注意力的聚合投影
-（`state-ring.md` 第 1 节）。因此 `aggregated_state` 和 `child_task_count`
+Schedule 不拥有自己的 Core 状态环，它的环是子 Task 注意力的聚合投影。
+因此 `aggregated_state` 和 `child_task_count`
 **不在 mock 里写死**，由 `projectScheduleNodes()` 从 occurrence 与子 Task 派生；
 World、HUD、焦点锚点、节点组件、局部场景共用这一份，保证各处说的是同一件事。
 
@@ -131,9 +122,7 @@ World、HUD、焦点锚点、节点组件、局部场景共用这一份，保证
 
 ### 1.4 Task 场景是焦点场景，不是子图
 
-四类局部场景不等价。设计把「Task Focus」和后三类子图明确分开
-（`rendering-architecture.md`：避免把 Task Focus 和后三类子图混成一个类型），
-`focus-leap.md` 3.1 的 Task 场景图里也只有：
+四类局部场景不等价。Task 是信息焦点，其余局部场景是子图。Task 场景呈现：
 
 ```text
 状态环 / 委托摘要 / 持续时间        ← 焦点对象
@@ -172,24 +161,21 @@ Task 场景是一块铺满全屏的信息面，两段自上而下：
 - 底部留出操作牌的宽度，卡片不钻到操作牌下面；
 - 两条信息线仍然是两个视图：切到「内核事件」时同一块位置换成 Core Event Log。
 
-#### 视觉：与 occ-web 同源
+#### 视觉原则
 
-配色与材质**直接对齐 occ-web**（同仓库的参考实现），不另起一套。
-Palantir 一脉的语言是「近黑中性面 + 克制的圆角 + 数据密集」，
-Blueprint 本身是 2px 圆角 / 10px 网格 / 五种意图色，
-occ-web 取其中偏克制的一档：
+界面采用「近黑中性面 + 克制的圆角 + 数据密集」的可读原则，避免以装饰压过运行信息：
 
 | 规矩 | 落地 |
 | --- | --- |
 | 表面是近黑中性灰，不是蓝调深空 | `#05070a` / `#0f1011` / `#191a1b`；body 叠两层径向辉光（顶部蓝、右下青） |
 | 主强调是**青**，状态用色盲安全三态 | `#2dd4a7` 青 / `#ffb020` 琥珀 / `#ff5470` 品红 / `#64748b` 板岩 |
 | 颜色只出现在需要你注意的地方 | 状态环：活着=亮青，响铃=琥珀，亮灯=品红，已收敛=暗青或板岩；资料节点类别一律中性板岩，靠字形区分 |
-| 视觉重量跟着状态走（occ-web 的 `priorityMeta` 配方） | `lib/nodeSurface.ts`：状态色淡渐变 + 内高光 + 柔和投影；需要响应的加同色外发光；宽度也随注意力变化 |
-| 材质 = 淡色渐变 + 内高光 + 柔和投影 | `.glass` / `.glass-strong` 与 occ-web 同一份配方；`.tactical-command-deck` 的青色描边 + 外发光用在操作牌上 |
+| 视觉重量跟着状态走 | `lib/nodeSurface.ts`：状态色淡渐变 + 内高光 + 柔和投影；需要响应的加同色外发光；宽度也随注意力变化 |
+| 材质 = 淡色渐变 + 内高光 + 柔和投影 | `.glass` / `.glass-strong`；`.tactical-command-deck` 的青色描边 + 外发光用在操作牌上 |
 | 战术网格作底衬 | `.grid-bg`：96px + 24px 双层网格，顶部径向渐隐，固定不随画布移动 |
 | 小字号密集排版 | 正文 11–13px；`.label` = 11px；数字一律等宽 |
-| **字距只给拉丁串** | occ-web 的 `.label` 是**全大写英文专用**，0.2em 字距套到中文上会被撑散（实测 11px 的字拿到 2.2px 字距，「引用该配置」渲染成「引 用 该 配 置」）。所以默认档不带字距，纯拉丁串显式加 `.label-en`；中文靠字号 + 字重 + `topline` 分割线承担「标题感」 |
-| 时长用紧凑写法 | `lib/format.ts` 的 `formatDurationSec` 从 occ-web 抄来：`20min`、`1h 15min`，**零秒不显示**——页脚只有 154px，`20m 0s` 这种写法放不下 |
+| **字距只给拉丁串** | 0.2em 字距套到中文上会被撑散（实测 11px 的字拿到 2.2px 字距，「引用该配置」渲染成「引 用 该 配 置」）。所以默认档不带字距，纯拉丁串显式加 `.label-en`；中文靠字号 + 字重 + `topline` 分割线承担「标题感」 |
+| 时长用紧凑写法 | `lib/format.ts` 的 `formatDurationSec` 使用 `20min`、`1h 15min`，**零秒不显示**——页脚只有 154px，`20m 0s` 这种写法放不下 |
 | 圆角克制 | 8–16px（芯片 8 / 面板 12 / 卡片与节点 16），不用大圆角卡片 |
 
 人机交互的卡片与画布节点同一套读法：状态色淡渐变 + 内高光 + 柔和投影；
@@ -202,7 +188,7 @@ occ-web 取其中偏克制的一档：
 
 - Task 场景不产出画布节点与连线（`TaskProjection` 只解析引用）；
 - 操作牌的目标是**焦点对象本身**，不依赖选中态——Task 场景里没有可点选的节点；
-- Controller Observation 仍是徽标，不是节点（`focus-leap.md` 3.2）。
+- Controller Observation 以徽标呈现，不扩展成空间节点。
 
 ## 2. 全屏画布 + 悬浮 Overlay
 
@@ -236,7 +222,7 @@ Task 场景没有画布，见 1.4：它是焦点场景，不是子图。
 
 局部场景**不能**在顶部中央放摘要条：那会和 HUD 抢同一块屏幕，
 而且设计里「委托摘要」本来就由画布中央的焦点对象承担
-（`focus-leap.md` 3.1 的焦点对象框），固定摘要条是重复表达。
+；焦点对象框已提供身份信息，固定摘要条会重复表达。
 
 概览栈的位置由 `ANCHOR_POSITION` / `ANCHOR_SIZE` 派生，和飞行终点共用同一组常量，
 否则飞行代理会落到和锚点不重合的地方。`sceneOverlay.test.tsx` 锁住了这两点。
@@ -273,7 +259,7 @@ Task 要飞回编排台。用进入时测到的矩形而不是重新推算，是
 
 ### 状态环与注意力
 
-判定集中在 `lib/attention.ts`，与 `state-ring.md` 一一对应：
+判定集中在 `lib/attention.ts`：
 
 - `needsDecision`：`paused` + `pending_decision/pending_tool_id` + `pending`，
   这是唯一的响铃判定；
@@ -287,16 +273,14 @@ Task 要飞回编排台。用进入时测到的矩形而不是重新推算，是
 
 ### 场景入口：可进入性由投影声明
 
-能不能进入局部世界，不由节点类型、也不由「当前在哪个场景」决定，
+能不能进入局部场景，不由节点类型、也不由「当前在哪个场景」决定，
 而是由投影返回的 `SceneEntry` 声明（`SceneRenderer` 里没有 `if/else`）。
 
 由此得到一条必须成立的推论：**Core Task 就是 Core Task**。
-Schedule 子 Task 是 occurrence 物化的真实 Core Task
-（`world-model.md` 第 3 节「外围每次 occurrence 仍创建独立 Core Task」），
+Schedule 子 Task 是 occurrence 物化的真实 Core Task，
 它和外层 Task 只有「由谁创建」的区别，因此双击、操作牌、进入局部世界
 全都一样。「子 Task 不进外层」指的是不进 Archive 投影、不重复计入
-响铃/亮灯，不是「不能打开」——`focus-leap.md` 3.3 的原话就是
-「保留每个子 Task 的原始状态**供进入详情**」。
+响铃/亮灯，不是「不能打开」；每个子 Task 的原始状态保留以供进入详情。
 
 早期实现有两条不一致，都已修正：
 
@@ -411,7 +395,7 @@ mid 密度变成 near 密度——内容变多、DOM 变化，第二次点击命
 
 ## 4. 严格保留的边界
 
-这些是设计文档的硬边界，实现中刻意不做「看起来更完整」的补全：
+这些是当前前端的硬边界，实现中刻意不做「看起来更完整」的补全：
 
 | 边界 | 实现方式 |
 | --- | --- |
@@ -445,17 +429,15 @@ mid 密度变成 near 密度——内容变多、DOM 变化，第二次点击命
    `BackendCapabilityNotice`，列出仍未就绪的目标接口；
 2. **没有 Change Feed**：不做增量同步、游标推进与快照恢复。SSE 只当
    「有变化」的信号，收到就重拉整份快照；
-3. **新建任务**仍是本地提交（`prototypeTaskStore`），节点带
-   `isPrototypeDraft` 标记，并在界面标注「原型本地提交，非 Core 事实」。
-   后端的 `create_task` 命令已经存在，但还没有接进「新建任务」流程；
+3. **新建任务已接入真实命令**：前端通过网关调用 `create_task`，取得后端生成的 Task ID，
+   「创建并启动」再提交 `start_task`；新节点来自重读快照，不以本地草稿代替 Core 事实；
 4. **命令提交后按真实结果反馈**：成功显示 accepted 并重读快照，
    失败显示 rejected 与后端给的原因（不再无条件提示「已接受」）。
-   回执本身仍不会被后续重读结果推翻（`focus-leap.md` 3.5 的
-   「等待重读」目前只做到重读，没做到回执随事实更新）；
-5. **Agent Audit 仍是夹具数据**：后端还没有审计投影接口（
-   `backend-contract.md` 第 7 节的 `GET /api/tasks/{id}/agent-audit`
-   是目标契约），这一条线不能作为真实任务执行过程的证据。Core Event Log
-   已经是真实数据；
+    回执本身仍不会被后续重读结果推翻；
+5. **Agent Audit 已有真实读取路径**：前端按需调用
+   `GET /api/tasks/{id}/agent-audit`，后端通过执行者 adapter 读取；LangGraph 托管执行者提供
+   真实审计投影，其他执行者可能明确报告不可用。该投影记录执行者存储的对话/工具调用，
+   与 Core Event Log 的权限判决事实属于不同来源；外部 Agent 只读监控契约仍待设计；
 6. **Schedule 子图只画得出两个角色**：网关快照只有 `schedules` +
    `dispatches`，没有 Schedule Entry 与 Task Definition，因此
    `has` / `references` 两条关系在真实数据下画不出来。四角色的契约由
@@ -473,13 +455,12 @@ mid 密度变成 near 密度——内容变多、DOM 变化，第二次点击命
 10. **卡片的外观没有自动化覆盖**：卡片尺寸、圆角、阴影、吸附是纯视觉，
    自动化只能量到数值（宽度、行数、遮挡面积），量不出好看不好看。
    测试锁住的是行为（消息的先后顺序、角色卡各出现几次）；
-11. **视觉语言已与 occ-web 对齐**：调色板、材质配方、圆角尺度、字号层级
-   全部照 occ-web 抄过来（见 1.4）。若 occ-web 那边改了配色，这里需要跟着改——
-   两份 token 目前是各自定义的，没有共享包；
+11. **视觉 token 在前端独立维护**：调色板、材质配方、圆角尺度与字号层级由本项目
+   自己定义，尚未抽成共享包；
 12. **节点宽度与页脚长度是硬绑的**：节点宽由注意力档决定（180/190/200/208），
    页脚可用宽度因此只有 154px，而最长的状态文字「失败（已确认）」占 77px。
    留给时长的余量只有 69px——`20m 0s` 这种写法（83px）放不下，会从中间断行。
-   现在用 occ-web 的紧凑写法（`20min`，66px）压在一行内，并给页脚加了
+   现在用紧凑写法（`20min`，66px）压在一行内，并给页脚加了
    `flex-wrap` 兜底。**再往页脚塞任何字都会重新触发这个问题**，
    要加内容得先重新量（第 6 节给了量法）；
 13. **悬浮层会盖住画布节点**（浏览器实测量出，未修）：根因是 `fitView`
@@ -493,7 +474,7 @@ mid 密度变成 near 密度——内容变多、DOM 变化，第二次点击命
    已修的一处：配置舱引用列表原在左下、压住 `cap-001` 1263px²，
    现在按设计的「底部两侧」挪到右下（该场景右下本来就是空的）。
 
-### 与原计划的一处结构差异
+### 组件结构取舍
 
 计划里列了一个通用 `FloatingContainer`（可拖动 + 安全区吸附）。
 实现时只在 `FloatingHud` 内做了拖动与吸附，没有抽出通用组件，原因是：
@@ -531,7 +512,7 @@ mid 密度变成 near 密度——内容变多、DOM 变化，第二次点击命
 - **量出页脚为什么折行**：节点内容盒 154px，`持续时间 20m 0s` 一行要
   83px，最长状态文字「失败（已确认）」占 77px，加 8px 间距共 168px——
   差 14px，浏览器于是把时长从中间断成两行（页脚高 40px vs 正常的 24px）。
-  换成 occ-web 的 `20min`（66px）后 151px，一行放得下；
+  换成紧凑的 `20min`（66px）后 151px，一行放得下；
 - **量出 `.label` 的 0.2em 字距落在中文上**：11px 的中文串拿到
   `letter-spacing: 2.2px`，渲染成「引 用 该 配 置」；
 - **修掉了量测工具自身的一个盲点**：`overlap.mjs` 原来按 class 点名找
@@ -545,11 +526,11 @@ node scripts/shot.mjs --script scripts/scenes/overlap.mjs --out shots/ov.png
 ```
 
 ```bash
-npm run test    # 140 项：注意力判定、投影契约、网关契约、SceneStack、Focus Leap、选择、场景布局、格式化、App 冒烟
+npm run test    # 注意力判定、投影契约、网关契约、SceneStack、Focus Leap、选择、场景布局、格式化、App 冒烟
 npm run build   # tsc -b && vite build
 ```
 
-测试直接对应设计文档的验收条目，尤其是：
+测试重点覆盖的交互与投影规则包括：
 
 - `attention.test.ts`：唯一响铃判定；paused 三种含义；已确认失败仍为断裂环；
 - `projection.test.ts`：Schedule 子 Task 不泄漏到 Archive；无

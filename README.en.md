@@ -1,117 +1,90 @@
 # Occam
 
-**中文版**: [README.md](README.md)
+**中文**: [README.md](README.md)
 
-> A **local-first personal control plane**: it treats "things I handed to an agent" as first-class
-> objects you can actually manage.
+> A **local-first Agent execution control plane**: make delegated work observable, constrainable,
+> traceable, and subject to human control.
 
-The name comes from **Occam's razor** — *do not multiply entities beyond necessity*. The kernel
-keeps that promise: four primitives (Task / Executor / Capability / Control Event) and nothing
-else; a state change must carry its event, so there is no separate "audit log" to maintain —
-**the event chain is the fact.**
-
-It does not train models, schedule clusters, or act as yet another agent framework. It answers a
-different set of questions: **how far along is this job, who approved that step, on what grounds,
-and what exactly happened at that moment.**
+Occam is not another Agent framework, and it does not require every Agent to use the same runtime.
+It focuses on what happens after work is delegated: **what has happened, which tools were
+requested, which policy allowed them, who approved them, and what the run produced.**
 
 ```text
-you ──delegate──▶ Task ──▶ executor (an agent, or plain code)
-                   │
-                   ├── wants a tool? ──▶ policy check ──▶ needs a human? ──▶ pushed to your phone
-                   │                                                    (tap approve — it resumes itself)
-                   └── every step lands as an event; the chain says exactly what happened
+managed Agent ──tool request──▶ policy decision ──▶ human approval ──▶ tool execution
+       │                                      │
+       └──run and result──▶ execution audit   └──▶ events and records
+
+external Agent ──read-only monitor (planned)──▶ normalized observation view
 ```
 
-## Four claims it is built on
+## Project principles
 
-**① Four primitives, everything else is peripheral.** Task (a job), Executor (who runs it),
-Capability (what it may touch), Control Event (what happened). The kernel knows only these four,
-so there is exactly one place that knows how a job is doing.
+- **Integrate different Agents without pretending they are identical.** Extensions map native
+  records into a shared execution view while preserving source identity, evidence, and unknowns.
+- **Separate control from observation.** A managed executor can use Occam's permission and approval
+  channel. A monitor can read an external Agent's records, but that does not give it control over
+  that Agent.
+- **Judge tool actions before execution.** Executors receive an allowlist; policy can require human
+  approval; approval is bound to the specific request and control events preserve the decision.
+- **Use run evidence to help people improve workflows.** The goal is to let an analysis Agent
+  suggest improvements from cost, latency, approvals, and failures. This analysis is still planned.
+- **Keep the kernel local-first and small.** Task, Executor, Capability, and Control Event form the
+  control kernel; runtimes, monitoring sources, and peripheral features enter through extensions.
 
-**② A state change must carry its event.** The kernel has a single migration channel
-(`commit(uow, command, task, *, event)`) — so you *cannot* write code that changes state and forgets
-to record it. The event chain isn't a log; it **is** the fact. The UI, the audit trail and every
-outbound notification derive from it.
+## Agent integration levels
 
-**③ Judgment comes before action.** A tool call isn't "the executor calls whatever it wants": first
-the policy decision (who may call it, does a human need to approve), **then it is accounted**, and
-only then does it run. That is why "what did it actually do" stays answerable afterwards — including
-everything that was refused.
+| Integration | Boundary | Status |
+| --- | --- | --- |
+| Managed execution | Occam starts the executor and routes its tool requests through Occam policy and approval | Worker contract, LangGraph executor, allowlist, and approval pipeline are implemented |
+| External execution control | Call a remote Agent service to start, pause, resume, or cancel a run | Planned; depends on the external service API |
+| External read-only monitoring | Read conversations, tool activity, and status for an Agent running outside Occam | Monitor contract is planned; a LangGraph external-monitor sample is intended |
 
-**④ Peripherals are packages; the kernel doesn't grow.** To add a capability you add one
-`extensions/<name>/manifest.yaml` (tools / executors / schedules / providers / message channels).
-Not a line of kernel code changes; drop the package in and it's live, edit the manifest and it
-hot-reloads.
+The current LangGraph Agent is **managed by Occam**. A future LangGraph monitor sample would observe
+a separate Agent started outside Occam. The framework name is shared, but the execution and
+integration paths are distinct.
 
-## What it looks like
+External data sources differ. The planned monitor contract will normalize event shape while
+preserving source identity, native references, evidence, and unknown fields. Observed activity will
+not be presented as authorized or executed by Occam.
 
-The UI is a **spatial canvas** with five scenes (overview / task / schedule / archive / configuration)
-and focus transitions between them. Every object opens a **command surface** where each command
-tells you its **consequence and whether it can be undone** before you press it.
+## Repository layout
 
-Approvals don't require you to sit in front of the app: when a decision is needed, output is
-**pushed to your phone** (Feishu today). Tapping a button on the card **turns that card into
-"✅ approved" in place**, and the task resumes by itself — no redirect, no scrolling back through
-chat history.
+| Directory | Contents |
+| --- | --- |
+| [`occ-next/`](occ-next/) | Python backend: control kernel, permission gateway, Workers, extensions, and HTTP API |
+| [`occ-command-center/`](occ-command-center/) | React frontend: tasks, events, approvals, and configuration |
+| [`occ-mcp-examples/`](occ-mcp-examples/) | External MCP connection examples |
 
-## Running it
+## Run locally
 
-Python 3.11+ and Node (only to build the frontend).
+Requires Python 3.11+ and Node.js.
 
 ```bash
-# backend (API on 127.0.0.1:8765)
+# backend
 cd occ-next
 uv sync --extra dev --extra agent
-uv run python -m src.serve
+uv run occ-next
 
-# frontend (dev shape, hot reload on localhost:5173)
+# frontend development server
 cd occ-command-center
 npm ci && npm run dev
 ```
 
-The release shape is **one process, one port**: run `npm run build`, then start the backend with
-`OCC_NEXT_WEB_DIR=../occ-command-center/dist` and both the UI and the API come out of 8765.
+The backend listens on `127.0.0.1:8765` by default; the frontend dev server uses
+`localhost:5173`. For a single-origin release, build the frontend and set
+`OCC_NEXT_WEB_DIR=../occ-command-center/dist` before starting the backend.
 
-- Credentials live in `occ-next/config/.env` (written by you, never committed) and travel **only
-  through environment variables**. What the program writes lives in `occ-next/data/` and
-  `occ-next/workspace/`.
-- You can exercise the whole approval path without a real model: install an extension package and
-  use an executor that is plain code.
+## Current implementation boundaries
 
-## Layout
+- The project is a single-machine, local-first system, without multi-tenant or public-internet
+  product design.
+- The current LangGraph Agent runs in an Occam Worker subprocess. Its tool requests go through
+  gateway policy and approval. External monitoring is a separate planned integration path.
+- Managed Agent audit is read on demand through the executor adapter. Persistent gateway records of
+  actual tool results, duration, and complete cost telemetry still need work.
+- An independent analysis Agent, the external monitoring event contract, and remote Agent control
+  adapters are planned.
 
-| Directory | What it is |
-| --- | --- |
-| [`occ-next/`](occ-next/) | Backend: the four-primitive kernel plus the gateway (policy / approval / schedules / executors / output layer). **The brain** |
-| [`occ-command-center/`](occ-command-center/) | Frontend: React 19 + Vite + Tailwind spatial canvas |
-| [`occ-next/extensions/`](occ-next/extensions/) | Extension packages. `AUTHORING.md` is the tutorial for writing one |
-| [`occ-mcp-examples/`](occ-mcp-examples/) | Examples of the MCP wiring |
-| [`docs-Next-Version/`](docs-Next-Version/) | Architecture, decisions (ADRs), frontend design, export from the old system |
-| [`docs/`](docs/) | Historical archive (describing the **deleted** old system) |
-
-> **Why the directories and variables still say `occ`**: this grew out of OCC
-> (Operations Command Center) — `occ-next/`, `OCC_NEXT_*` and friends carry that history.
-> Under the new name they stay as they are: `occ` is the first three letters of Occam.
-
-298 backend tests (`cd occ-next && uv run pytest -q`), 293 frontend tests
-(`cd occ-command-center && npm test`).
-
-## Status
-
-**A personal project: single machine, local-first.** It runs and gets used daily, but it is not a
-product — no multi-tenancy, no cloud deployment, and no design for exposing the control plane to the
-public internet (which is precisely why it is built the way it is).
-
-> The previous implementation, `occ-os` / `occ-web`, was deleted on **2026-10-02**. Its code is still
-> in git history (`git log -- occ-os`); its configuration and data were exported to
-> [`docs-Next-Version/from-occ-os/`](docs-Next-Version/from-occ-os/); the pre-deletion audit is
-> [`docs/删除旧版前的审计.md`](docs/删除旧版前的审计.md) (Chinese).
-
-Documentation is mostly in Chinese; this file is the English counterpart of the top-level README.
-
-## Where to go next
-
-1. **How to run it, where credentials go, how it autostarts** → [`docs/运行与结构.md`](docs/运行与结构.md) (Chinese)
-2. **Writing an extension package** → [`occ-next/extensions/AUTHORING.md`](occ-next/extensions/AUTHORING.md)
-3. **Why it is designed this way** → [`docs-Next-Version/architecture-next/decisions.md`](docs-Next-Version/architecture-next/decisions.md) (Chinese)
-4. **How the requirements grew, rework and all** → [`occ-next/docs/requirements.md`](occ-next/docs/requirements.md) (Chinese)
+See the [backend overview](occ-next/README.md), [extension authoring guide](occ-next/extensions/AUTHORING.md),
+[Agent extension integration decision](occ-next/extensions/AGENT_INTEGRATION_DECISION.md), and
+[frontend overview](occ-command-center/README.md).

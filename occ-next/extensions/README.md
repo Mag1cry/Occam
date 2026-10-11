@@ -3,6 +3,9 @@
 **怎么写一个包，看 [`AUTHORING.md`](AUTHORING.md)**——清单每一栏什么意思、worker 要遵守的
 四条契约、工具怎么被发现、会被拒的常见写法。这一页只说这个目录**长什么样**。
 
+Agent 的集成分档与设计意图见 [`AGENT_INTEGRATION_DECISION.md`](AGENT_INTEGRATION_DECISION.md)；
+这是扩展架构决策，不代表其中所有集成形态都已实现。
+
 （想再往深一层，读 [`../src/extensions/README.md`](../src/extensions/README.md)：
 那是宿主那一侧的实现说明，契约的出处都在那儿。）
 
@@ -18,10 +21,14 @@ extensions/
 │  ├─ config.yaml    ← 包自己读，宿主不参与
 │  ├─ provider.py    ← `tools` 那个入口：公开方法就是工具
 │  └─ worker.py      ← `executors` 那个入口：六个参数、只会说话
-├─ langgraph-agent/  带代码的基座执行者（一段代码，好几个配置）
+├─ langgraph-agent/  Occam 托管的 LangGraph 执行者（一段代码，好几个配置）
 ├─ heart-rate-watch/ 一份设计笔记，**不是包**（没有 manifest.yaml，扫描器不看它）
-└─ _todo/            以后要做的插件（**也不是包**，见它自己的 README）
+└─ _todo/            规划笔记（**不是包**，不影响运行，见它自己的 README）
 ```
+
+`langgraph-agent/` 是**托管执行**：Occam 启动 Worker，工具调用经过网关权限管线，adapter
+读取该执行者的结果与审计。规划中的外部 Agent 监控是另一类扩展，读取 Occam 之外运行的 Agent
+数据；它需要专门的观察契约，不等同于这里的执行者 adapter。
 
 ## 三条规矩
 

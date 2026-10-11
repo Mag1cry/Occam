@@ -536,7 +536,7 @@ def _remote(app):
 def test_config_里的_env_读得进来(tmp_path: Path, monkeypatch):
     """**人写的东西放 config、程序写的放 data**（`settings.py` 那两张表）。
 
-    这个函数会改进程的环境，所以它只在**入口**（`serve.py::_assembly`）被调——
+    这个函数会改进程的环境，所以它只在**入口**（`serve.py`）被调——
     塞进 `Settings.from_env()` 的话，任何跑测试的手一抖就会把开发机上真实的凭据
     灌进来。
     """

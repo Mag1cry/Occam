@@ -23,7 +23,7 @@
 
 **二、包名不再是 `composition` / `core` 这些顶层名。** 旧脚本把 `occ-next/src`
 插进 `sys.path` 再 `from composition.app import build_app`；新树里 `src` 就是包名
-（`python -m src.serve`），插的是**仓库根**（`src/` 与 `tests/` 都在这一层）。
+（`uv run occ-next` 的入口是 `src.serve`），插的是**仓库根**（`src/` 与 `tests/` 都在这一层）。
 
 五道题本身没变；问法跟着新契约变了的两处，各自写在探针里。
 """

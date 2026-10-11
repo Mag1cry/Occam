@@ -1,12 +1,12 @@
-# _todo/ — 以后要做的插件
+# _todo/ — 规划中的外围扩展
 
 **这里不是包。**（下划线开头的目录扫描器不看它——`loader.py::_package_dirs` 只认
 带 `manifest.yaml` 的、且名字不以 `_` 开头的目录。）所以放这儿的东西**不影响运行中的系统**：
 它只是一份清单。
 
-清单记的是**旧系统（`occ-os/`、`occ-web/`）里有、新系统有意留着以后做的东西**。
-删掉旧版之后，那些能力就只剩这页纸上的几行了——记在这儿是为了**它们不会被忘掉**，
-也免得同一个问题被重新讨论一遍。
+这里记录外围能力的当前意图与待解决的实现问题。它不是决策日志；Agent 集成的稳定决策见
+[`../AGENT_INTEGRATION_DECISION.md`](../AGENT_INTEGRATION_DECISION.md)。
+本目录不会被扩展加载器读取，也不代表下列能力已进入当前系统。
 
 写法与契约见 [`../AUTHORING.md`](../AUTHORING.md)：**要做的每一件，最后都是一份
 `extensions/<名字>/` 包**（一份 `manifest.yaml` + 它自己的代码），不是往内核里加东西。
@@ -43,15 +43,18 @@
 所以遥测天然属于外围——它记的是"跑得怎么样"，不是"控制面确认了什么"。采集口可以是一个
 工具（worker 或 adapter 上报），聚合与趋势是这个包自己的事。
 
-## 3. 外部 Agent 监视（Hermes / DSH）
+## 3. 外部 Agent 只读监控（包括 LangGraph）
 
 **旧系统有什么**：`hermes` / `dsh` 两个 provider 扩展（直读 Hermes `state.db`、
 DSH 的 RPC 会话树），加上 `/api/occ/agent-monitor` 与那棵 subagent 会话树——**只读监测**。
 
-**现在的裁定**：TODO，**做成插件**。
+**方向已确定**：作为独立监控扩展接入。计划提供 LangGraph 外部监控样例，也可按价值评估接入
+Hermes / DSH 等外部运行时。这里的 LangGraph 样例监控的是**在 Occam 之外启动**的 Agent；
+当前由 Occam Worker 托管的 LangGraph Agent 仍属于托管执行，不改变分类。
 
-**调用方法**：**写一个 adapter，一样的**——和包里其他对外部系统的接法是同一条路
-（adapter 是包自己实现的那几格：`checkpoint_exists` / `read_result` / 可选 `read_audit`）。
+**待设计的契约**：统一观察事件与对话呈现；保留来源、原生引用、证据和映射不确定性；定义
+发现/绑定外部运行、增量读取、状态映射与错误表达。外部监控不能直接套用托管执行者的
+`checkpoint_exists` / `read_result` / `read_audit` adapter，因为两者生命周期和责任边界不同。
 
 ## 4. 外部 Agent 后端（把外部 agent 当执行者）
 
@@ -59,7 +62,8 @@ DSH 的 RPC 会话树），加上 `/api/occ/agent-monitor` 与那棵 subagent �
 （`start` / `status` / `update` / `cancel` / `approve` / `events` / `pause` / `resume`），
 状态别名归一化，加一个外部后端注册表。
 
-**现在的裁定**：TODO，**同 3：调用方法就是写一个 adapter**。
+**方向**：保留为独立的外部执行控制档，优先级与只读监控分开评估；具体能力取决于外部服务接口。
+控制接口不能与只读监控混成同一个 adapter 契约。
 
 **做的时候要知道的**：新系统里执行者的入口现在只有两种——包内 `worker.entrypoint`，
 或者基于另一个执行者的配置（`executor:`）。**外部后端会是第三种**，而它不该改内核：

@@ -47,7 +47,7 @@ def load_env_file(root: str | Path | None = None) -> list[str]:
 
     ## 为什么不覆盖已有的
 
-    **"环境变量 > .env"**：`$env:OCC_NEXT_HOST='0.0.0.0'; uv run python -m src.serve`
+    **"环境变量 > .env"**：`$env:OCC_NEXT_HOST='0.0.0.0'; uv run occ-next`
     这种临时覆盖必须永远赢——不然调试的时候你会怀疑自己在改哪个值。
     （`override=False`，`python-dotenv` 的默认值。）
 
@@ -56,7 +56,7 @@ def load_env_file(root: str | Path | None = None) -> list[str]:
     这个函数会改进程的环境，而环境是**入口的事**（systemd / 任务计划 / 启动脚本 /
     `uvicorn --env-file` 都是这个角色）。放进 `Settings.from_env()` 的话，
     任何跑测试的手一抖就会把开发机上真实的凭据灌进来——测试不该有那种威力。
-    所以它只在 `serve.py::_assembly()` 里被调一次。
+    所以它只在 `serve.py` 启动入口装配系统之前被调用。
 
     ## `config/` 在哪个根下
 

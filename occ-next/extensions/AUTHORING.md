@@ -224,7 +224,7 @@ parameters:
 
 ---
 
-## 五、交付结果与审计：adapter（可选）
+## 五、托管执行者的结果与审计：adapter（可选）
 
 结果**归执行者的包**——内核只存一个 `result_ref`。要让人查得到，包在 `worker.py` 旁边放一个
 `adapter.py`，约定一个 `get_adapter(config, database_path)`：
@@ -238,11 +238,15 @@ class Adapter(Protocol):
     def read_audit(self, task, database_path) -> dict: ...                         # 可选
 ```
 
-- **它不参与启动，纯读。**
+- **它不参与启动，纯读。** 这里的 adapter 服务于由 Occam 托管运行的执行者，读取该执行者自己的结果和审计数据。
 - 缺 `checkpoint_exists` / `read_result` 里的任何一个，**加载时就拒**（不是等到调用现场才炸）；
   `read_audit` 确实可选。
 - **不提供 adapter 也行**：那结果就是短命的——跑完在宿主内存里，重启就没了。
   **那是你的选择**：内核凭什么替一个它不认识的执行者决定结果存哪、存多久。
+
+这不是外部 Agent 只读监控的通用契约。外部监控扩展观察的是 Occam 不启动、不控制的 Agent，
+后续需要单独定义来源发现、事件映射、证据引用、增量读取和可观测性声明；不能因为两者都读取
+对话/工具记录，就把监控结果当成 Occam 托管执行的审计事实。
 
 ---
 
@@ -321,7 +325,7 @@ models:
 1. **放到 `extensions/` 下，起服务看一眼**：
 
    ```powershell
-   uv run python -m src.serve
+   uv run occ-next
    # 另一个终端
    curl http://127.0.0.1:8765/api/state
    ```

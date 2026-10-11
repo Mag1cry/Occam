@@ -20,6 +20,10 @@ dependencies = [
     "lark-oapi>=1.7.3",
 ]
 
+[project.scripts]
+# `uv run occ-next` starts the ASGI app without requiring users to call Python directly.
+occ-next = "src.serve:main"
+
 [project.optional-dependencies]
 agent = [
     "langchain>=1.0",

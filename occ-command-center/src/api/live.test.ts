@@ -4,7 +4,7 @@
  * **默认跳过**（没有后端时它不该红）。跑它：
  *
  * ```powershell
- * cd occ-next; OCC_NEXT_ROOT=demo uv run python -m src.serve
+ * cd occ-next; OCC_NEXT_ROOT=demo uv run occ-next
  * cd occ-command-center
  * $env:VITE_GATEWAY_URL='http://127.0.0.1:8765'   # 客户端的 base：浏览器里是相对路径，node 里得给全
  * $env:VITE_OCC_LIVE='http://127.0.0.1:8765'
